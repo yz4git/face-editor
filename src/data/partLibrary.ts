@@ -52,7 +52,6 @@ const hairBaseBack:TriSpec[]=[tri('hair-back',3,'hair',[-.64,.98],[-.85,.18],[-.
 function hairPart(id:HairStyleId,label:string,extra:TriSpec[]):PartDefinition<HairStyleId>{return part(id,label,'hair',[...hairBaseBack,...extra,...hairBaseFront],[id,'hair']);}
 function referencePonytailPart():PartDefinition<HairStyleId>{
   const geometry=REFERENCE_PONYTAIL_HAIR.map(({points,shade})=>tri('hair-front',15,'hair',points[0],points[1],points[2],shade));
-  // Keep the red tie as geometry too; no image/texture is introduced.
   geometry.push(tri('hair-tie',16,'mouth',[.70,1.72],[.91,1.77],[.83,1.63],14),tri('hair-tie',16,'mouth',[.83,1.63],[.91,1.77],[1.02,1.64],6));
   return part('ponytail','Ponytail','hair',geometry,['ponytail','hair','reference-fit']);
 }
@@ -73,10 +72,11 @@ function eyePart(id:EyeStyleId,label:string,w:number,h:number,tilt=0):PartDefini
 const centroid=(points:readonly Vec2[]):Vec2=>[points.reduce((s,p)=>s+p[0],0)/points.length,points.reduce((s,p)=>s+p[1],0)/points.length];
 const scaleAround=(points:readonly Vec2[],scaleX:number,scaleY:number):Vec2[]=>{const[cx,cy]=centroid(points);return points.map(([x,y])=>[cx+(x-cx)*scaleX,cy+(y-cy)*scaleY]);};
 function referenceBrightEyePart():PartDefinition<EyeStyleId>{
+  const white=scaleAround(REFERENCE_BRIGHT_EYE_OUTLINE,.90,.86),iris=scaleAround(REFERENCE_BRIGHT_EYE_IRIS,1.22,1);
   return part('bright','Bright','eye',[
     ...fan('eye-outline',8,'pupil',REFERENCE_BRIGHT_EYE_OUTLINE,[0,1,0,-1,0,0,1,0,-1,0]),
-    ...fan('eye-white',9,'white',scaleAround(REFERENCE_BRIGHT_EYE_OUTLINE,.82,.77),[0,0,-1,0,0,-1,0,0]),
-    ...fan('iris',10,'eyes',REFERENCE_BRIGHT_EYE_IRIS,[8,4,-3,-11,-16,-5]),
+    ...fan('eye-white',9,'white',white,[0,0,-1,0,0,-1,0,0]),
+    ...fan('iris',10,'eyes',iris,[8,4,-3,-11,-16,-5]),
     ...fan('pupil',11,'pupil',REFERENCE_BRIGHT_EYE_PUPIL,[0]),
     tri('eye-glint',12,'white',REFERENCE_BRIGHT_EYE_GLINT[0],REFERENCE_BRIGHT_EYE_GLINT[1],REFERENCE_BRIGHT_EYE_GLINT[2]),
   ],['eye','reference-fit']);
