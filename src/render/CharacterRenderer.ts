@@ -25,7 +25,7 @@ export class CharacterRenderer{
   private tryWebGL(){
     try{
       const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x000000,0);renderer.domElement.className='character-canvas';
-      renderer.domElement.addEventListener('webglcontextlost',(event:WebGLContextEvent)=>{event.preventDefault();this.renderer?.dispose();this.renderer?.domElement.remove();this.renderer=null;this.enableCanvasFallback();this.resize();this.render();},{once:true});
+      renderer.domElement.addEventListener('webglcontextlost',(event:Event)=>{event.preventDefault();this.renderer?.dispose();this.renderer?.domElement.remove();this.renderer=null;this.enableCanvasFallback();this.resize();this.render();},{once:true});
       this.renderer=renderer;this.mode='webgl';this.host.append(renderer.domElement);
     }catch{this.renderer=null;}
   }
