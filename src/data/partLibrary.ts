@@ -8,6 +8,10 @@ const tri=(layer:string,zIndex:number,colorRole:ColorRole,a:Vec2,b:Vec2,c:Vec2,s
 const quad=(layer:string,zIndex:number,colorRole:ColorRole,a:Vec2,b:Vec2,c:Vec2,d:Vec2,shadeA=0,shadeB=shadeA):TriSpec[]=>[
   tri(layer,zIndex,colorRole,a,b,c,shadeA),tri(layer,zIndex,colorRole,a,c,d,shadeB),
 ];
+const fan=(layer:string,zIndex:number,colorRole:ColorRole,points:readonly Vec2[],shades:readonly number[]=[0]):TriSpec[]=>{
+  const center:Vec2=[points.reduce((sum,p)=>sum+p[0],0)/points.length,points.reduce((sum,p)=>sum+p[1],0)/points.length];
+  return points.map((p,i)=>tri(layer,zIndex,colorRole,center,p,points[(i+1)%points.length],shades[i%shades.length]??0));
+};
 const boundsOf=(items:readonly TriSpec[])=>{
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   for(const item of items) for(const [x,y] of item.points){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}
@@ -68,17 +72,23 @@ function hairPart(id:HairStyleId,label:string,extra:TriSpec[]):PartDefinition<Ha
 
 function eyePart(id:EyeStyleId,label:string,w:number,h:number,tilt=0):PartDefinition<EyeStyleId>{
   const localTilt=(p:Vec2):Vec2=>{const c=Math.cos(tilt),s=Math.sin(tilt);return[p[0]*c-p[1]*s,p[0]*s+p[1]*c]};
-  const A=localTilt([-w/2,0]),B=localTilt([0,h/2]),C=localTilt([w/2,0]),D=localTilt([0,-h/2]);
-  const innerW=w*.82,innerH=h*.74;
-  const IA=localTilt([-innerW/2,0]),IB=localTilt([0,innerH/2]),IC=localTilt([innerW/2,0]),ID=localTilt([0,-innerH/2]);
-  const iw=w*.34,ih=h*.66;
+  const eyePolygon=(scaleX:number,scaleY:number):Vec2[]=>[
+    [-w*.50*scaleX,-h*.02*scaleY],
+    [-w*.24*scaleX, h*.43*scaleY],
+    [ w*.08*scaleX, h*.52*scaleY],
+    [ w*.50*scaleX, h*.06*scaleY],
+    [ w*.16*scaleX,-h*.48*scaleY],
+    [-w*.20*scaleX,-h*.38*scaleY],
+  ].map(localTilt);
+  const iw=w*.33,ih=h*.70;
+  const iris:Vec2[]=[[-iw*.55,0],[-iw*.30,ih*.46],[iw*.16,ih*.50],[iw*.52,.01],[iw*.20,-ih*.50],[-iw*.28,-ih*.42]];
   return part(id,label,'eye',[
-    // Dark outer polygon acts as an anime-like lash/outline, white inset remains planar.
-    ...quad('eye-outline',8,'pupil',A,B,C,D,0,0),
-    ...quad('eye-white',9,'white',IA,IB,IC,ID,0,-4),
-    ...quad('iris',10,'eyes',[-iw/2,.005],[0,ih/2],[iw/2,.005],[0,-ih/2],8,-16),
-    tri('pupil',11,'pupil',[-.022,.015],[.022,.015],[0,-ih*.30]),
-    tri('eye-glint',12,'white',[-.025,.065],[.035,.082],[-.004,.018]),
+    // Every contour is still triangle data, but the six-sided silhouette reads as an anime eye instead of a diamond.
+    ...fan('eye-outline',8,'pupil',eyePolygon(1,1),[0,4,0,0,0,0]),
+    ...fan('eye-white',9,'white',eyePolygon(.82,.72),[0,-2,0,0,-3,0]),
+    ...fan('iris',10,'eyes',iris,[7,3,-2,-12,-16,-4]),
+    ...fan('pupil',11,'pupil',[[-.030,.02],[-.014,.075],[.025,.065],[.034,.005],[.016,-.075],[-.025,-.065]],[0]),
+    tri('eye-glint',12,'white',[-.030,.075],[.032,.086],[-.003,.022]),
   ],['eye']);
 }
 
