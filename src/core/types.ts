@@ -1,12 +1,15 @@
 export type Vec2 = readonly [number, number];
 export type Triangle = readonly [Vec2, Vec2, Vec2];
 
+export type CharacterBaseId = 'female' | 'male';
 export type HairStyleId = 'ponytail' | 'short-spike' | 'bob' | 'long' | 'side-tail' | 'twin-tail';
 export type FaceShapeId = 'soft' | 'oval' | 'angular' | 'round';
 export type EyeStyleId = 'bright' | 'soft' | 'sharp' | 'round' | 'narrow';
 export type BrowStyleId = 'soft' | 'straight' | 'angled' | 'thin' | 'bold';
 export type NoseStyleId = 'diamond' | 'small' | 'line' | 'soft';
 export type MouthStyleId = 'smile-open' | 'smile' | 'neutral' | 'soft-smile' | 'o';
+export type PartCategory = 'body' | 'hair' | 'face' | 'eye' | 'brow' | 'nose' | 'mouth';
+export type ColorRole = 'skin' | 'hair' | 'eyes' | 'brows' | 'jacket' | 'accent' | 'shirt' | 'hood' | 'strap' | 'white' | 'mouth' | 'tongue' | 'pupil';
 
 export interface PartTransform {
   x: number;
@@ -14,10 +17,30 @@ export interface PartTransform {
   scaleX: number;
   scaleY: number;
   rotation: number;
+  spacing?: number;
+}
+
+export interface PartTriangleDefinition {
+  points: Triangle;
+  colorRole: ColorRole;
+  shade?: number;
+  layer: string;
+  zIndex: number;
+}
+
+export interface PartDefinition<T extends string = string> {
+  id: T;
+  label: string;
+  category: PartCategory;
+  anchor: Vec2;
+  bounds: { minX:number; minY:number; maxX:number; maxY:number };
+  tags: readonly string[];
+  triangles: readonly PartTriangleDefinition[];
 }
 
 export interface CharacterDefinition {
   version: 1;
+  baseStyle: CharacterBaseId;
   hairStyle: HairStyleId;
   faceShape: FaceShapeId;
   eyeStyle: EyeStyleId;
@@ -51,12 +74,7 @@ export interface CompiledPolygonLayer {
 export interface CompiledPolygonCharacter {
   version: 1;
   layers: CompiledPolygonLayer[];
-  bounds: {
-    minX: number;
-    minY: number;
-    maxX: number;
-    maxY: number;
-  };
+  bounds: { minX:number; minY:number; maxX:number; maxY:number };
 }
 
 export interface SerializablePolygonLayer {
@@ -78,10 +96,4 @@ export interface CharacterBundle {
   };
 }
 
-export const identityTransform = (): PartTransform => ({
-  x: 0,
-  y: 0,
-  scaleX: 1,
-  scaleY: 1,
-  rotation: 0,
-});
+export const identityTransform = (): PartTransform => ({ x:0, y:0, scaleX:1, scaleY:1, rotation:0, spacing:0 });
