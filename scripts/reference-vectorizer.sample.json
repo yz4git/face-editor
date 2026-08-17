@@ -1,0 +1,19 @@
+{
+  "roi": [535, 165, 955, 585],
+  "seed_rgb": [[92, 68, 44], [69, 51, 31], [53, 37, 21], [55, 39, 23], [34, 27, 17], [75, 54, 33]],
+  "seed_point": [720, 220],
+  "lab_tolerance": 38.0,
+  "contour_epsilon": 1.8,
+  "edge_stride": 8,
+  "max_corners": 90,
+  "min_triangle_coverage": 0.86,
+  "target_lab_error": 10.5,
+  "max_points": 165,
+  "refinement_batch": 10,
+  "min_point_distance": 7.0,
+  "game_scale": 0.0062,
+  "pixel_origin": [720.0, 406.0],
+  "game_origin": [0.0, 0.62],
+  "base_rgb": [57, 40, 29],
+  "kmeans_colors": 8
+}
