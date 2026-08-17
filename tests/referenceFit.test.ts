@@ -11,10 +11,11 @@ describe('sample-derived polygon geometry',()=>{
     expect(HAIR_PARTS.ponytail.triangles.length).toBeGreaterThanOrEqual(REFERENCE_FIT_METRICS.hairTriangles);
   });
 
-  it('uses the tall anime-eye proportions measured from the sample',()=>{
-    const b=EYE_PARTS.bright.bounds;
+  it('uses the large anime-eye proportions measured from the sample',()=>{
+    const b=EYE_PARTS.bright.bounds,width=b.maxX-b.minX,height=b.maxY-b.minY;
     expect(EYE_PARTS.bright.tags).toContain('reference-fit');
-    expect(b.maxX-b.minX).toBeGreaterThan(.36);
-    expect(b.maxY-b.minY).toBeGreaterThan(.36);
+    expect(width).toBeGreaterThan(.34);
+    expect(height).toBeGreaterThan(.31);
+    expect(width/height).toBeGreaterThan(1.02);
   });
 });
