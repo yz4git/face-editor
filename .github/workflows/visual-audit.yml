@@ -25,10 +25,10 @@ jobs:
           cat /tmp/face-editor-preview.log
           exit 1
       - name: Run Canvas2D visual audit
-        run: npx playwright test tests/visual-audit.spec.ts --reporter=line
+        run: npx playwright test visual-audit/visual-audit.spec.ts --reporter=line
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: face-editor-visual-audit
-          path: visual-audit/
+          path: visual-audit/output/
           if-no-files-found: warn
