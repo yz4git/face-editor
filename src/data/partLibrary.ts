@@ -2,10 +2,7 @@ import type {
   BrowStyleId, CharacterBaseId, ColorRole, EyeStyleId, FaceShapeId, HairStyleId,
   MouthStyleId, NoseStyleId, PartCategory, PartDefinition, PartTriangleDefinition, Vec2,
 } from '../core/types';
-import {
-  REFERENCE_BRIGHT_EYE_GLINT, REFERENCE_BRIGHT_EYE_IRIS, REFERENCE_BRIGHT_EYE_PUPIL,
-  REFERENCE_PONYTAIL_HAIR,
-} from './referenceGeometry';
+import { REFERENCE_PONYTAIL_HAIR } from './referenceGeometry';
 
 type TriSpec = Omit<PartTriangleDefinition,'points'> & { points: readonly [Vec2,Vec2,Vec2] };
 const tri=(layer:string,zIndex:number,colorRole:ColorRole,a:Vec2,b:Vec2,c:Vec2,shade=0):TriSpec=>({layer,zIndex,colorRole,shade,points:[a,b,c]});
@@ -71,17 +68,21 @@ function eyePart(id:EyeStyleId,label:string,w:number,h:number,tilt=0):PartDefini
 }
 const centroid=(points:readonly Vec2[]):Vec2=>[points.reduce((s,p)=>s+p[0],0)/points.length,points.reduce((s,p)=>s+p[1],0)/points.length];
 const scaleAround=(points:readonly Vec2[],scaleX:number,scaleY:number):Vec2[]=>{const[cx,cy]=centroid(points);return points.map(([x,y])=>[cx+(x-cx)*scaleX,cy+(y-cy)*scaleY]);};
-// Convex contour measured from the sample's right eye after Lab skin rejection.
-// Its filled mask overlaps the source eye silhouette at 0.9519 IoU.
+// Coordinates measured from the supplied right-eye crop after Lab skin rejection and intensity segmentation.
+// Outer eye mask IoU against the sample is 0.9519.
 const referenceEyeOutline:readonly Vec2[]=[[.1663,.1271],[.1663,.0031],[.1167,-.1023],[.0671,-.1705],[-.0445,-.1829],[-.1065,-.1581],[-.1313,-.1085],[-.1871,.0899],[-.1561,.1457],[.1415,.1457]];
+const referenceIrisOutline:readonly Vec2[]=[[-.0445,.1333],[-.0755,.0651],[-.0755,-.0527],[-.0321,-.1643],[-.0445,-.1767],[.0485,-.1767],[.0981,-.0775],[.0919,.0775],[.0547,.1333]];
+const referencePupil:readonly Vec2[]=[[.0609,.0589],[.0175,.0589],[-.0073,.0279],[-.0259,.0279],[-.0259,-.0527],[.0175,-.0899],[.0609,-.0465]];
+const referenceGlint:readonly Vec2[]=[[-.0073,.1209],[-.0321,.1147],[-.0445,.0651],[-.0197,.0341],[-.0011,.0465],[.0113,.0899]];
 function referenceBrightEyePart():PartDefinition<EyeStyleId>{
-  const white=scaleAround(referenceEyeOutline,.90,.86),iris=scaleAround(REFERENCE_BRIGHT_EYE_IRIS,1.22,1);
+  const white=scaleAround(referenceEyeOutline,.90,.86),iris=scaleAround(referenceIrisOutline,.79,.92);
   return part('bright','Bright','eye',[
     ...fan('eye-outline',8,'pupil',referenceEyeOutline,[0,1,0,-1,0,0,1,0,-1,0]),
     ...fan('eye-white',9,'white',white,[0,0,-1,0,0,-1,0,0]),
-    ...fan('iris',10,'eyes',iris,[8,4,-3,-11,-16,-5]),
-    ...fan('pupil',11,'pupil',REFERENCE_BRIGHT_EYE_PUPIL,[0]),
-    tri('eye-glint',12,'white',REFERENCE_BRIGHT_EYE_GLINT[0],REFERENCE_BRIGHT_EYE_GLINT[1],REFERENCE_BRIGHT_EYE_GLINT[2]),
+    ...fan('iris-outline',10,'pupil',referenceIrisOutline,[0,0,0,-2,0,0,0,1,0]),
+    ...fan('iris',11,'eyes',iris,[8,4,-3,-11,-16,-6,2,6,9]),
+    ...fan('pupil',12,'pupil',referencePupil,[0,-1,0,0,1,0,0]),
+    ...fan('eye-glint',13,'white',referenceGlint,[0]),
   ],['eye','reference-fit']);
 }
 function browPart(id:BrowStyleId,label:string,w:number,h:number,angle=0):PartDefinition<BrowStyleId>{return part(id,label,'brow',[...quad('brows',12,'brows',[-w/2,0],[w/2,angle],[w/2,angle+h],[-w/2,h],0,8)],['brow']);}
