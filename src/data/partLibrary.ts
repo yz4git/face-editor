@@ -53,12 +53,10 @@ function facePart(id:FaceShapeId,label:string,w:number,jaw:number,chin:number):P
 }
 
 const hairBaseFront:TriSpec[]=[
-  // Crown planes establish the triangle-built silhouette while keeping the eye area open.
   tri('hair-front',15,'hair',[-.72,1.10],[-.36,1.58],[-.47,.86],0),
   tri('hair-front',15,'hair',[-.36,1.58],[.04,1.70],[-.10,.78],12),
   tri('hair-front',15,'hair',[.04,1.70],[.48,1.48],[.16,.80],0),
   tri('hair-front',15,'hair',[.48,1.48],[.73,1.06],[.39,.88],-15),
-  // Side locks frame the face rather than covering the eyes.
   tri('hair-front',15,'hair',[-.72,1.10],[-.93,.91],[-.64,.50],-15),
   tri('hair-front',15,'hair',[.73,1.06],[.91,.87],[.64,.49],0),
   tri('hair-front',15,'hair',[-.36,1.20],[-.10,.78],[.04,.86],-11),
@@ -79,11 +77,10 @@ function eyePart(id:EyeStyleId,label:string,w:number,h:number,tilt=0):PartDefini
     [ w*.50*scaleX, h*.06*scaleY],
     [ w*.16*scaleX,-h*.48*scaleY],
     [-w*.20*scaleX,-h*.38*scaleY],
-  ].map(localTilt);
+  ].map(p=>localTilt(p as Vec2));
   const iw=w*.33,ih=h*.70;
   const iris:Vec2[]=[[-iw*.55,0],[-iw*.30,ih*.46],[iw*.16,ih*.50],[iw*.52,.01],[iw*.20,-ih*.50],[-iw*.28,-ih*.42]];
   return part(id,label,'eye',[
-    // Every contour is still triangle data, but the six-sided silhouette reads as an anime eye instead of a diamond.
     ...fan('eye-outline',8,'pupil',eyePolygon(1,1),[0,4,0,0,0,0]),
     ...fan('eye-white',9,'white',eyePolygon(.82,.72),[0,-2,0,0,-3,0]),
     ...fan('iris',10,'eyes',iris,[7,3,-2,-12,-16,-4]),
@@ -122,31 +119,17 @@ export const FACE_PARTS:Record<FaceShapeId,PartDefinition<FaceShapeId>>={
   angular:facePart('angular','Angular',.70,.52,-.13), round:facePart('round','Round',.70,.68,.02),
 };
 export const HAIR_PARTS:Record<HairStyleId,PartDefinition<HairStyleId>>={
-  ponytail:hairPart('ponytail','Ponytail',[
-    tri('hair-back',3,'hair',[.58,1.12],[1.32,1.28],[.92,.73],10),tri('hair-back',3,'hair',[1.32,1.28],[1.18,.44],[.92,.73],-16),tri('hair-back',3,'hair',[1.18,.44],[.98,-.02],[.82,.55],0),
-  ]),
+  ponytail:hairPart('ponytail','Ponytail',[tri('hair-back',3,'hair',[.58,1.12],[1.32,1.28],[.92,.73],10),tri('hair-back',3,'hair',[1.32,1.28],[1.18,.44],[.92,.73],-16),tri('hair-back',3,'hair',[1.18,.44],[.98,-.02],[.82,.55],0)]),
   'short-spike':hairPart('short-spike','Short spike',[tri('hair-front',15,'hair',[.38,1.48],[.76,1.32],[.55,1.05],12),tri('hair-back',3,'hair',[-.72,1.28],[-.98,1.10],[-.72,.93],6)]),
   bob:hairPart('bob','Bob',[tri('hair-front',15,'hair',[.61,.78],[.70,.08],[.42,.27],-15),tri('hair-back',3,'hair',[-.70,.72],[-.72,.02],[-.40,.22],-10),tri('hair-back',3,'hair',[.70,.72],[.72,.02],[.40,.22],4)]),
   long:hairPart('long','Long',[tri('hair-back',3,'hair',[-.72,.65],[-.78,-.75],[-.42,-.50],-16),tri('hair-back',3,'hair',[.72,.65],[.78,-.75],[.42,-.50],10)]),
   'side-tail':hairPart('side-tail','Side tail',[tri('hair-back',3,'hair',[.72,1.12],[1.48,1.10],[1.04,.62],10),tri('hair-back',3,'hair',[1.48,1.10],[1.28,.22],[1.04,.62],-16),tri('hair-back',3,'hair',[1.28,.22],[1.02,-.18],[.94,.47],0)]),
-  'twin-tail':hairPart('twin-tail','Twin tail',[
-    tri('hair-back',3,'hair',[-.68,1.02],[-1.28,.90],[-1.02,.34],10),tri('hair-back',3,'hair',[-1.28,.90],[-1.12,.12],[-1.02,.34],-16),
-    tri('hair-back',3,'hair',[.68,1.02],[1.28,.90],[1.02,.34],10),tri('hair-back',3,'hair',[1.28,.90],[1.12,.12],[1.02,.34],-16),
-  ]),
+  'twin-tail':hairPart('twin-tail','Twin tail',[tri('hair-back',3,'hair',[-.68,1.02],[-1.28,.90],[-1.02,.34],10),tri('hair-back',3,'hair',[-1.28,.90],[-1.12,.12],[-1.02,.34],-16),tri('hair-back',3,'hair',[.68,1.02],[1.28,.90],[1.02,.34],10),tri('hair-back',3,'hair',[1.28,.90],[1.12,.12],[1.02,.34],-16)]),
 };
-export const EYE_PARTS:Record<EyeStyleId,PartDefinition<EyeStyleId>>={
-  bright:eyePart('bright','Bright',.34,.29,.01), soft:eyePart('soft','Soft',.33,.24,0), sharp:eyePart('sharp','Sharp',.35,.22,.05), round:eyePart('round','Round',.31,.31,0), narrow:eyePart('narrow','Narrow',.35,.18,.03),
-};
-export const BROW_PARTS:Record<BrowStyleId,PartDefinition<BrowStyleId>>={
-  soft:browPart('soft','Soft',.28,.055,.04),straight:browPart('straight','Straight',.29,.045,0),angled:browPart('angled','Angled',.30,.06,.09),thin:browPart('thin','Thin',.28,.03,.02),bold:browPart('bold','Bold',.31,.08,.04),
-};
+export const EYE_PARTS:Record<EyeStyleId,PartDefinition<EyeStyleId>>={bright:eyePart('bright','Bright',.34,.29,.01),soft:eyePart('soft','Soft',.33,.24,0),sharp:eyePart('sharp','Sharp',.35,.22,.05),round:eyePart('round','Round',.31,.31,0),narrow:eyePart('narrow','Narrow',.35,.18,.03)};
+export const BROW_PARTS:Record<BrowStyleId,PartDefinition<BrowStyleId>>={soft:browPart('soft','Soft',.28,.055,.04),straight:browPart('straight','Straight',.29,.045,0),angled:browPart('angled','Angled',.30,.06,.09),thin:browPart('thin','Thin',.28,.03,.02),bold:browPart('bold','Bold',.31,.08,.04)};
 export const NOSE_PARTS:Record<NoseStyleId,PartDefinition<NoseStyleId>>={diamond:nosePart('diamond','Diamond'),small:nosePart('small','Small'),line:nosePart('line','Line'),soft:nosePart('soft','Soft')};
-export const MOUTH_PARTS:Record<MouthStyleId,PartDefinition<MouthStyleId>>={
-  'smile-open':mouthPart('smile-open','Open smile'),smile:mouthPart('smile','Smile'),neutral:mouthPart('neutral','Neutral'),'soft-smile':mouthPart('soft-smile','Soft smile'),o:mouthPart('o','O'),
-};
+export const MOUTH_PARTS:Record<MouthStyleId,PartDefinition<MouthStyleId>>={'smile-open':mouthPart('smile-open','Open smile'),smile:mouthPart('smile','Smile'),neutral:mouthPart('neutral','Neutral'),'soft-smile':mouthPart('soft-smile','Soft smile'),o:mouthPart('o','O')};
 
-export const PART_LIBRARY = {
-  body: BODY_PARTS, hair: HAIR_PARTS, face: FACE_PARTS, eye: EYE_PARTS, brow: BROW_PARTS, nose: NOSE_PARTS, mouth: MOUTH_PARTS,
-} as const;
-
-export function allPartDefinitions():PartDefinition[]{return [...Object.values(BODY_PARTS),...Object.values(HAIR_PARTS),...Object.values(FACE_PARTS),...Object.values(EYE_PARTS),...Object.values(BROW_PARTS),...Object.values(NOSE_PARTS),...Object.values(MOUTH_PARTS)];}
+export const PART_LIBRARY={body:BODY_PARTS,hair:HAIR_PARTS,face:FACE_PARTS,eye:EYE_PARTS,brow:BROW_PARTS,nose:NOSE_PARTS,mouth:MOUTH_PARTS} as const;
+export function allPartDefinitions():PartDefinition[]{return[...Object.values(BODY_PARTS),...Object.values(HAIR_PARTS),...Object.values(FACE_PARTS),...Object.values(EYE_PARTS),...Object.values(BROW_PARTS),...Object.values(NOSE_PARTS),...Object.values(MOUTH_PARTS)];}
