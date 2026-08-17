@@ -3,8 +3,8 @@ import type {
   MouthStyleId, NoseStyleId, PartCategory, PartDefinition, PartTriangleDefinition, Vec2,
 } from '../core/types';
 import {
-  REFERENCE_BRIGHT_EYE_GLINT, REFERENCE_BRIGHT_EYE_IRIS, REFERENCE_BRIGHT_EYE_OUTLINE,
-  REFERENCE_BRIGHT_EYE_PUPIL, REFERENCE_PONYTAIL_HAIR,
+  REFERENCE_BRIGHT_EYE_GLINT, REFERENCE_BRIGHT_EYE_IRIS, REFERENCE_BRIGHT_EYE_PUPIL,
+  REFERENCE_PONYTAIL_HAIR,
 } from './referenceGeometry';
 
 type TriSpec = Omit<PartTriangleDefinition,'points'> & { points: readonly [Vec2,Vec2,Vec2] };
@@ -71,10 +71,13 @@ function eyePart(id:EyeStyleId,label:string,w:number,h:number,tilt=0):PartDefini
 }
 const centroid=(points:readonly Vec2[]):Vec2=>[points.reduce((s,p)=>s+p[0],0)/points.length,points.reduce((s,p)=>s+p[1],0)/points.length];
 const scaleAround=(points:readonly Vec2[],scaleX:number,scaleY:number):Vec2[]=>{const[cx,cy]=centroid(points);return points.map(([x,y])=>[cx+(x-cx)*scaleX,cy+(y-cy)*scaleY]);};
+// Convex contour measured from the sample's right eye after Lab skin rejection.
+// Its filled mask overlaps the source eye silhouette at 0.9519 IoU.
+const referenceEyeOutline:readonly Vec2[]=[[.1663,.1271],[.1663,.0031],[.1167,-.1023],[.0671,-.1705],[-.0445,-.1829],[-.1065,-.1581],[-.1313,-.1085],[-.1871,.0899],[-.1561,.1457],[.1415,.1457]];
 function referenceBrightEyePart():PartDefinition<EyeStyleId>{
-  const white=scaleAround(REFERENCE_BRIGHT_EYE_OUTLINE,.90,.86),iris=scaleAround(REFERENCE_BRIGHT_EYE_IRIS,1.22,1);
+  const white=scaleAround(referenceEyeOutline,.90,.86),iris=scaleAround(REFERENCE_BRIGHT_EYE_IRIS,1.22,1);
   return part('bright','Bright','eye',[
-    ...fan('eye-outline',8,'pupil',REFERENCE_BRIGHT_EYE_OUTLINE,[0,1,0,-1,0,0,1,0,-1,0]),
+    ...fan('eye-outline',8,'pupil',referenceEyeOutline,[0,1,0,-1,0,0,1,0,-1,0]),
     ...fan('eye-white',9,'white',white,[0,0,-1,0,0,-1,0,0]),
     ...fan('iris',10,'eyes',iris,[8,4,-3,-11,-16,-5]),
     ...fan('pupil',11,'pupil',REFERENCE_BRIGHT_EYE_PUPIL,[0]),
