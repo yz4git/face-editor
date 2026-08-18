@@ -1,11 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 
 type Family='outfit'|'hood'|'shirt'|'strap'|'accent'|'hair'|'face'|'eye'|'brow'|'nose'|'mouth';
 const families:Record<Family,number>={outfit:6,hood:6,shirt:6,strap:6,accent:8,hair:10,face:10,eye:10,brow:10,nose:10,mouth:10};
 
-async function selectIndex(page:Parameters<typeof test>[0] extends never?never:any,kind:Family,index:number){await page.locator(`[data-kind="${kind}"]`).nth(index%families[kind]).click();}
-
-async function canvasMetrics(canvas:any){return canvas.evaluate((element:HTMLCanvasElement)=>{
+async function selectIndex(page:Page,kind:Family,index:number){await page.locator(`[data-kind="${kind}"]`).nth(index%families[kind]).click();}
+async function canvasMetrics(canvas:Locator){return canvas.evaluate((element:HTMLCanvasElement)=>{
   const ctx=element.getContext('2d');if(!ctx)return{painted:0,minX:0,minY:0,maxX:0,maxY:0,width:element.width,height:element.height};
   const{width,height}=element,data=ctx.getImageData(0,0,width,height).data;let painted=0,minX=width,minY=height,maxX=-1,maxY=-1;
   for(let y=0;y<height;y++)for(let x=0;x<width;x++){if(data[(y*width+x)*4+3]===0)continue;painted++;minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}
