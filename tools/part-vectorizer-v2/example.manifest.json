@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "source": "./test/fixture/parts.png",
+  "output": "./test/output",
+  "exportName": "VECTORIZED_FIXTURE_PARTS",
+  "concurrency": 4,
+  "kindGrids": {
+    "hair": {"columns": 2, "rows": 1, "x": 0, "y": 0, "width": 400, "height": 200, "gapX": 0, "gapY": 0},
+    "eye": {"columns": 2, "rows": 1, "x": 0, "y": 200, "width": 400, "height": 200, "gapX": 0, "gapY": 0}
+  },
+  "kindInsets": {
+    "hair": {"left": 0.04, "right": 0.04, "top": 0.04, "bottom": 0.04},
+    "eye": {"left": 0.04, "right": 0.04, "top": 0.04, "bottom": 0.04}
+  },
+  "targetBoundsByKind": {
+    "hair": {"minX": -1.2, "maxX": 1.2, "minY": -0.5, "maxY": 2.1, "flipY": true},
+    "eye": {"minX": -0.22, "maxX": 0.22, "minY": -0.2, "maxY": 0.2, "flipY": true}
+  },
+  "kindRoleBaseColors": {
+    "hair": {"hair": "#583c28", "hairTie": "#d34d56"},
+    "eye": {"outline": "#2a1b18", "white": "#fffaf0", "eyes": "#80552f", "pupil": "#241714", "highlight": "#ffffff"}
+  },
+  "quality": {
+    "minMaskIoU": 0.82,
+    "minBoundaryF1": 0.72,
+    "maxColorMae": 70,
+    "maxTriangles": 500
+  },
+  "items": [
+    {"id": "hair-a", "label": "Hair A", "kind": "hair", "cell": 0},
+    {"id": "hair-b", "label": "Hair B", "kind": "hair", "cell": 1},
+    {"id": "eye-a", "label": "Eye A", "kind": "eye", "cell": 0},
+    {"id": "eye-b", "label": "Eye B", "kind": "eye", "cell": 1}
+  ]
+}

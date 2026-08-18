@@ -7,7 +7,9 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build && node scripts/build-sites-worker.mjs",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "vitest run tests"
+    "test": "vitest run tests",
+    "vectorizer:setup": "npm --prefix tools/part-vectorizer-v2 install",
+    "vectorize:parts": "npm --prefix tools/part-vectorizer-v2 run vectorize --"
   },
   "dependencies": {
     "three": "^0.185.1"
