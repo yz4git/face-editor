@@ -21,11 +21,11 @@ export function boundsForPart(def:PartDefinition,predicate?:(layer:string)=>bool
   return Number.isFinite(minX)?{minX,minY,maxX,maxY}:{...def.bounds};
 }
 
+export function mirrorBoundsX(bounds:FitBounds):FitBounds{return{minX:-bounds.maxX,minY:bounds.minY,maxX:-bounds.minX,maxY:bounds.maxY};}
 export function transformPoint([x,y]:Vec2,t:PartTransform):Vec2{
   const px=x*t.scaleX,py=y*t.scaleY,c=Math.cos(t.rotation),s=Math.sin(t.rotation);
   return[px*c-py*s+t.x,px*s+py*c+t.y];
 }
-
 export function transformBounds(bounds:FitBounds,t:PartTransform):FitBounds{
   const points:Vec2[]=[[bounds.minX,bounds.minY],[bounds.minX,bounds.maxY],[bounds.maxX,bounds.minY],[bounds.maxX,bounds.maxY]];
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
@@ -44,19 +44,11 @@ export function fitBoundsToRect(source:FitBounds,target:FitRect,mode:'contain'|'
 
 export function composeFit(base:PartTransform,user?:PartTransform):PartTransform{
   if(!user)return{...base};
-  return{
-    x:base.x+user.x,
-    y:base.y+user.y,
-    scaleX:base.scaleX*user.scaleX,
-    scaleY:base.scaleY*user.scaleY,
-    rotation:base.rotation+user.rotation,
-    spacing:user.spacing??0,
-  };
+  return{x:base.x+user.x,y:base.y+user.y,scaleX:base.scaleX*user.scaleX,scaleY:base.scaleY*user.scaleY,rotation:base.rotation+user.rotation,spacing:user.spacing??0};
 }
 
 export function rectFromBounds(bounds:FitBounds,x0:number,y0:number,x1:number,y1:number):FitRect{
-  const w=width(bounds),h=height(bounds);
-  return{minX:bounds.minX+w*x0,minY:bounds.minY+h*y0,maxX:bounds.minX+w*x1,maxY:bounds.minY+h*y1};
+  const w=width(bounds),h=height(bounds);return{minX:bounds.minX+w*x0,minY:bounds.minY+h*y0,maxX:bounds.minX+w*x1,maxY:bounds.minY+h*y1};
 }
 
 export const LAYER_Z:Readonly<Record<string,number>>=Object.freeze({
@@ -66,8 +58,6 @@ export const LAYER_Z:Readonly<Record<string,number>>=Object.freeze({
 });
 export function resolvedLayerZ(layer:string,fallback:number):number{return LAYER_Z[layer]??fallback;}
 
-// Seeds are the previous hand-calibrated placements. The optimizer below searches around them and
-// chooses the lowest geometry score, so they act only as a stable starting neighborhood.
 const HAIR_REFERENCE_SEED:Record<HairStyleId,PartTransform>={
   ponytail:{x:.12865,y:-.03616,scaleX:1.32327,scaleY:1.32325,rotation:0},braid:{x:.06740,y:-.02455,scaleX:.98017,scaleY:1.09094,rotation:0},bob:{x:-.23278,y:-.02590,scaleX:1.02921,scaleY:1.11777,rotation:0},'half-up':{x:-.01840,y:-.02024,scaleX:1.00470,scaleY:1.00468,rotation:0},long:{x:-.05513,y:-.02497,scaleX:1.00468,scaleY:1.10002,rotation:0},bun:{x:0,y:-.02332,scaleX:1.06594,scaleY:1.06596,rotation:0},'short-spike':{x:-.08577,y:-.00980,scaleX:.79640,scaleY:.79638,rotation:0},'side-tail':{x:-.04288,y:-.02479,scaleX:.96792,scaleY:1.09543,rotation:0},wavy:{x:-.11028,y:-.01480,scaleX:.77188,scaleY:.89608,rotation:0},'twin-tail':{x:-.01838,y:-.02592,scaleX:.98018,scaleY:1.11862,rotation:0},
 };
@@ -75,8 +65,8 @@ const HAIR_REFERENCE_SEED:Record<HairStyleId,PartTransform>={
 function quantile(values:number[],q:number){const sorted=[...values].sort((a,b)=>a-b),index=(sorted.length-1)*q,lo=Math.floor(index),hi=Math.ceil(index);return sorted[lo]*(hi-index)+sorted[hi]*(index-lo);}
 function hairCloud(def:PartDefinition){
   const xs:number[]=[],ys:number[]=[];for(const triangle of def.triangles)for(const[x,y]of triangle.points){xs.push(x);ys.push(y);}
-  const qx20=quantile(xs,.2),qx50=quantile(xs,.5),qx80=quantile(xs,.8),qy90=quantile(ys,.9);
-  const centralY:number[]=[];for(const triangle of def.triangles)for(const[x,y]of triangle.points)if(x>=qx20&&x<=qx80)centralY.push(y);
+  const qx20=quantile(xs,.2),qx50=quantile(xs,.5),qx80=quantile(xs,.8),qy90=quantile(ys,.9),centralY:number[]=[];
+  for(const triangle of def.triangles)for(const[x,y]of triangle.points)if(x>=qx20&&x<=qx80)centralY.push(y);
   return{qx20,qx50,qx80,qy90,fringe:quantile(centralY.length?centralY:ys,.16)};
 }
 
@@ -88,8 +78,7 @@ export function autoFitHair(id:HairStyleId,def:PartDefinition,face:FitBounds):{t
   let best={transform:{...seed},score:Infinity};
   for(const scaleMul of[.90,.94,.97,1,1.03,1.06,1.10])for(const dx of[-.08,-.04,0,.04,.08])for(const dy of[-.08,-.04,0,.04,.08]){
     const transform:PartTransform={x:seed.x+dx*fw,y:seed.y+dy*fh,scaleX:seed.scaleX*scaleMul,scaleY:seed.scaleY*scaleMul,rotation:0,spacing:0};
-    const tx=(x:number)=>x*transform.scaleX+transform.x,ty=(y:number)=>y*transform.scaleY+transform.y;
-    const left=tx(cloud.qx20),right=tx(cloud.qx80),top=ty(cloud.qy90),fringe=ty(cloud.fringe),mid=tx(cloud.qx50);
+    const tx=(x:number)=>x*transform.scaleX+transform.x,ty=(y:number)=>y*transform.scaleY+transform.y,left=tx(cloud.qx20),right=tx(cloud.qx80),top=ty(cloud.qy90),fringe=ty(cloud.fringe),mid=tx(cloud.qx50);
     const score=Math.pow((left-targetLeft)/fw,2)+Math.pow((right-targetRight)/fw,2)+3*Math.pow((mid-fc[0])/fw,2)+3*Math.pow((top-targetTop)/fh,2)+2*Math.pow((fringe-targetFringe)/fh,2);
     if(score<best.score)best={transform,score};
   }
@@ -97,44 +86,37 @@ export function autoFitHair(id:HairStyleId,def:PartDefinition,face:FitBounds):{t
 }
 
 export function autoFitFace(def:PartDefinition,canonical:FitRect):PartTransform{return fitBoundsToRect(def.bounds,canonical,'contain','center');}
-
+export function featureTarget(face:FitBounds,kind:'eye'|'brow'|'nose'|'mouth',side:-1|0|1=0):FitRect{
+  if(kind==='eye')return side<0?rectFromBounds(face,.11,.48,.39,.69):rectFromBounds(face,.61,.48,.89,.69);
+  if(kind==='brow')return side<0?rectFromBounds(face,.10,.72,.40,.83):rectFromBounds(face,.60,.72,.90,.83);
+  if(kind==='nose')return rectFromBounds(face,.43,.28,.57,.52);
+  return rectFromBounds(face,.30,.08,.70,.29);
+}
 export function autoFitFeature(def:PartDefinition,face:FitBounds,kind:'eye'|'brow'|'nose'|'mouth',side:-1|0|1=0):PartTransform{
-  let target:FitRect;
-  if(kind==='eye')target=side<0?rectFromBounds(face,.11,.48,.39,.69):rectFromBounds(face,.61,.48,.89,.69);
-  else if(kind==='brow')target=side<0?rectFromBounds(face,.10,.72,.40,.83):rectFromBounds(face,.60,.72,.90,.83);
-  else if(kind==='nose')target=rectFromBounds(face,.43,.28,.57,.52);
-  else target=rectFromBounds(face,.30,.08,.70,.29);
-  return fitBoundsToRect(def.bounds,target,'contain','center');
+  const source=side<0?mirrorBoundsX(def.bounds):def.bounds;return fitBoundsToRect(source,featureTarget(face,kind,side),'contain','center');
 }
 
-export function autoFitJacket(def:PartDefinition,canonicalJacket:FitRect):PartTransform{
-  const jacketBounds=boundsForPart(def,layer=>layer==='jacket');
-  return fitBoundsToRect(jacketBounds,canonicalJacket,'contain','top');
-}
-
-export function autoFitOutfitComponent(kind:'hood'|'shirt'|'strap'|'accent',id:string,def:PartDefinition,jacket:FitBounds):PartTransform{
-  if(kind==='hood')return fitBoundsToRect(def.bounds,rectFromBounds(jacket,.06,.78,.94,1.12),'contain','center');
-  if(kind==='shirt')return fitBoundsToRect(def.bounds,rectFromBounds(jacket,.20,.03,.80,.92),'contain','top');
+export function autoFitJacket(def:PartDefinition,canonicalJacket:FitRect):PartTransform{return fitBoundsToRect(boundsForPart(def,layer=>layer==='jacket'),canonicalJacket,'contain','top');}
+export function outfitTarget(kind:'hood'|'shirt'|'strap'|'accent',id:string,jacket:FitBounds):FitRect{
+  if(kind==='hood')return rectFromBounds(jacket,.06,.78,.94,1.12);
+  if(kind==='shirt')return rectFromBounds(jacket,.08,.04,.92,.92);
   if(kind==='strap'){
-    const harness=(id as StrapStyleId)==='cross'||(id as StrapStyleId)==='y-harness';
-    return fitBoundsToRect(def.bounds,harness?rectFromBounds(jacket,.10,.08,.90,.92):rectFromBounds(jacket,.19,.08,.81,.94),'contain','center');
+    const harness=(id as StrapStyleId)==='cross'||(id as StrapStyleId)==='y-harness';return harness?rectFromBounds(jacket,.10,.08,.90,.92):rectFromBounds(jacket,.19,.08,.81,.94);
   }
-  const anchor:Record<AccentStyleId,readonly[number,number,number,number]>={
-    diamond:[.40,.48,.60,.68],'long-strip':[.70,.26,.79,.72],'point-strip':[.21,.28,.31,.73],corner:[.60,.55,.79,.76],chevron:[.34,.56,.66,.72],slash:[.59,.38,.75,.56],taper:[.25,.31,.39,.55],triangle:[.41,.42,.59,.59],
-  };
-  const region=anchor[id as AccentStyleId]??[.40,.45,.60,.65];return fitBoundsToRect(def.bounds,rectFromBounds(jacket,...region),'contain','center');
+  const anchor:Record<AccentStyleId,readonly[number,number,number,number]>={diamond:[.40,.48,.60,.68],'long-strip':[.70,.26,.79,.72],'point-strip':[.21,.28,.31,.73],corner:[.60,.55,.79,.76],chevron:[.34,.56,.66,.72],slash:[.59,.38,.75,.56],taper:[.25,.31,.39,.55],triangle:[.41,.42,.59,.59]};
+  return rectFromBounds(jacket,...(anchor[id as AccentStyleId]??[.40,.45,.60,.65]));
 }
+export function autoFitOutfitComponent(kind:'hood'|'shirt'|'strap'|'accent',id:string,def:PartDefinition,jacket:FitBounds):PartTransform{return fitBoundsToRect(def.bounds,outfitTarget(kind,id,jacket),'contain','center');}
 
-export function fitEntry(id:string,family:string,def:PartDefinition,target:FitRect,transform:PartTransform,score=0):AutoFitEntry{
-  return{id,family,transform:{...transform},source:{...def.bounds},target:{...target},fitted:transformBounds(def.bounds,transform),score};
+export function fitAlignmentScore(fitted:FitBounds,target:FitRect):number{
+  const[fx,fy]=center(fitted),[tx,ty]=center(target),tw=width(target),th=height(target),overflow=containmentPenalty(fitted,target,.03),fill=Math.min(width(fitted)/tw,height(fitted)/th);
+  return Math.hypot((fx-tx)/tw,(fy-ty)/th)+overflow+Math.max(0,.18-fill)*2;
 }
-
+export function fitEntry(id:string,family:string,def:PartDefinition,target:FitRect,transform:PartTransform,score?:number,sourceOverride?:FitBounds):AutoFitEntry{
+  const source=sourceOverride??def.bounds,fitted=transformBounds(source,transform);return{id,family,transform:{...transform},source:{...source},target:{...target},fitted,score:score??fitAlignmentScore(fitted,target)};
+}
 export function containmentPenalty(inner:FitBounds,outer:FitBounds,pad=.08):number{
   const ow=width(outer),oh=height(outer),expanded={minX:outer.minX-ow*pad,minY:outer.minY-oh*pad,maxX:outer.maxX+ow*pad,maxY:outer.maxY+oh*pad};
-  const overflow=Math.max(0,expanded.minX-inner.minX)+Math.max(0,inner.maxX-expanded.maxX)+Math.max(0,expanded.minY-inner.minY)+Math.max(0,inner.maxY-expanded.maxY);
-  return overflow/Math.max(ow+oh,EPS);
+  const overflow=Math.max(0,expanded.minX-inner.minX)+Math.max(0,inner.maxX-expanded.maxX)+Math.max(0,expanded.minY-inner.minY)+Math.max(0,inner.maxY-expanded.maxY);return overflow/Math.max(ow+oh,EPS);
 }
-
-export function clampUserTransform(user:PartTransform):PartTransform{return{
-  x:clamp(user.x,-.5,.5),y:clamp(user.y,-.5,.5),scaleX:clamp(user.scaleX,.45,1.8),scaleY:clamp(user.scaleY,.45,1.8),rotation:clamp(user.rotation,-.7,.7),spacing:clamp(user.spacing??0,-.25,.25),
-};}
+export function clampUserTransform(user:PartTransform):PartTransform{return{x:clamp(user.x,-.5,.5),y:clamp(user.y,-.5,.5),scaleX:clamp(user.scaleX,.45,1.8),scaleY:clamp(user.scaleY,.45,1.8),rotation:clamp(user.rotation,-.7,.7),spacing:clamp(user.spacing??0,-.25,.25)};}
