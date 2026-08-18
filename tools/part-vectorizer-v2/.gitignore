@@ -1,4 +1,6 @@
 node_modules/
 test/fixture/
 test/output/
+manual-output/
+vectorizer-output/
 *.log
