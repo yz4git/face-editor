@@ -1,6 +1,5 @@
 import type { EyeStyleId, HairStyleId, Vec2 } from '../core/types';
-import { EYE_RAW_A } from './generated/eyeRawA';
-import { EYE_RAW_B } from './generated/eyeRawB';
+import { EYE_CONTOUR_SHAPES } from './generated/eyeContourShapes';
 import { HAIR_PACKED_CHARS, HAIR_PACKED_FIT, HAIR_PACKED_INDEX } from './generated/hairPacked';
 
 export type GeneratedHairRole='hair'|'hairTie';
@@ -8,11 +7,8 @@ export type GeneratedEyeRole='outline'|'white'|'eyes'|'pupil'|'highlight';
 export interface GeneratedVariantTriangle<R extends string>{role:R;points:readonly [Vec2,Vec2,Vec2];shade:number}
 export interface ReferenceBounds{minX:number;minY:number;maxX:number;maxY:number}
 
-export const GENERATED_VARIATION_SOURCE={kind:'generated-reference-sheet',hairCount:10,eyeCount:10,fitRevision:6,method:'source-sheet mask segmentation + feature-preserving hair Delaunay + face-relative display calibration + restored eye painter layers + source-like highlight reconstruction'} as const;
+export const GENERATED_VARIATION_SOURCE={kind:'generated-reference-sheet',hairCount:10,eyeCount:10,fitRevision:7,method:'source-sheet mask segmentation + feature-preserving hair Delaunay + face-relative display calibration + source-contour eye reconstruction'} as const;
 
-// Display-space bounds were re-measured by comparing each in-editor Canvas2D audit
-// against the source variation sheet. The packed geometry still carries the high-IoU
-// source silhouette; this affine stage only corrects its size/placement on the sampled face.
 export const HAIR_REFERENCE_BOUNDS:Record<HairStyleId,ReferenceBounds>={
   ponytail:{minX:-.82,maxX:1.35,minY:-.35,maxY:2.18},
   bob:{minX:-.80,maxX:.95,minY:-.10,maxY:1.95},
@@ -27,21 +23,8 @@ export const HAIR_REFERENCE_BOUNDS:Record<HairStyleId,ReferenceBounds>={
 };
 export const HAIR_REFERENCE_FIT=HAIR_PACKED_FIT;
 
-// The previous pass made the eyes materially too small on the editor face. These bounds
-// preserve each source style's aspect ratio while restoring the larger anime-eye scale
-// visible in the variation sheet and original character sample.
-export const EYE_REFERENCE_BOUNDS:Record<EyeStyleId,ReferenceBounds>={
-  bright:{minX:-.180,maxX:.180,minY:-.205,maxY:.205},
-  determined:{minX:-.185,maxX:.185,minY:-.165,maxY:.165},
-  sharp:{minX:-.195,maxX:.195,minY:-.165,maxY:.165},
-  round:{minX:-.180,maxX:.180,minY:-.190,maxY:.190},
-  soft:{minX:-.190,maxX:.190,minY:-.160,maxY:.160},
-  sleepy:{minX:-.205,maxX:.205,minY:-.125,maxY:.125},
-  sparkle:{minX:-.190,maxX:.190,minY:-.200,maxY:.200},
-  closed:{minX:-.190,maxX:.190,minY:-.055,maxY:.055},
-  narrow:{minX:-.210,maxX:.210,minY:-.115,maxY:.115},
-  'side-glance':{minX:-.190,maxX:.190,minY:-.150,maxY:.150},
-};
+const boundsOfPoints=(points:readonly Vec2[]):ReferenceBounds=>{let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const[x,y]of points){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}return{minX,minY,maxX,maxY};};
+export const EYE_REFERENCE_BOUNDS=Object.fromEntries((Object.keys(EYE_CONTOUR_SHAPES) as EyeStyleId[]).map(id=>[id,boundsOfPoints(EYE_CONTOUR_SHAPES[id].outer)])) as Record<EyeStyleId,ReferenceBounds>;
 
 const PACK_ALPHABET='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 const PACK_MAP=Object.fromEntries([...PACK_ALPHABET].map((c,i)=>[c,i])) as Record<string,number>;
@@ -53,33 +36,41 @@ function decodePackedHair(id:HairStyleId):GeneratedVariantTriangle<GeneratedHair
   return result;
 }
 
-type RawSet=readonly (readonly number[])[];
-const point=(raw:readonly number[],index:number):Vec2=>[raw[index],raw[index+1]];
-function decodeEye(raw:RawSet):GeneratedVariantTriangle<GeneratedEyeRole>[] {
-  const out:GeneratedVariantTriangle<GeneratedEyeRole>[]=[];
-  for(const values of raw){
-    const sourceRole=values[0],shade=values[1],points:readonly [Vec2,Vec2,Vec2]=[point(values,2),point(values,4),point(values,6)];
-    if(sourceRole===0)out.push({role:'outline',shade,points});
-    else if(sourceRole===1)out.push({role:'white',shade,points});
-    else if(sourceRole===2)out.push({role:'eyes',shade,points});
-    else if(sourceRole===3)out.push({role:'pupil',shade,points});
+const signedArea=(points:readonly Vec2[])=>points.reduce((sum,[x,y],i)=>{const[nx,ny]=points[(i+1)%points.length];return sum+x*ny-nx*y;},0)/2;
+const cross=(a:Vec2,b:Vec2,c:Vec2)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+const inTriangle=(p:Vec2,a:Vec2,b:Vec2,c:Vec2)=>{const c1=cross(a,b,p),c2=cross(b,c,p),c3=cross(c,a,p),hasNeg=c1<0||c2<0||c3<0,hasPos=c1>0||c2>0||c3>0;return!(hasNeg&&hasPos);};
+function triangulatePolygon(points:readonly Vec2[]):readonly [Vec2,Vec2,Vec2][]{
+  if(points.length<3)return[];if(points.length===3)return[[points[0],points[1],points[2]]];
+  const indices=points.map((_,i)=>i),ccw=signedArea(points)>0,out:[Vec2,Vec2,Vec2][]=[];let guard=0;
+  while(indices.length>3&&guard++<points.length*points.length){let clipped=false;
+    for(let i=0;i<indices.length;i++){const ia=indices[(i-1+indices.length)%indices.length],ib=indices[i],ic=indices[(i+1)%indices.length],a=points[ia],b=points[ib],c=points[ic],turn=cross(a,b,c);if(ccw?turn<=1e-7:turn>=-1e-7)continue;
+      let contains=false;for(const k of indices){if(k===ia||k===ib||k===ic)continue;if(inTriangle(points[k],a,b,c)){contains=true;break;}}if(contains)continue;out.push([a,b,c]);indices.splice(i,1);clipped=true;break;
+    }
+    if(!clipped)break;
+  }
+  if(indices.length===3)out.push([points[indices[0]],points[indices[1]],points[indices[2]]]);
+  if(!out.length){const center:Vec2=[points.reduce((s,p)=>s+p[0],0)/points.length,points.reduce((s,p)=>s+p[1],0)/points.length];return points.map((p,i)=>[center,p,points[(i+1)%points.length]] as [Vec2,Vec2,Vec2]);}
+  return out;
+}
+const polygonTriangles=(role:GeneratedEyeRole,points:readonly Vec2[],shades:readonly number[]=[0])=>triangulatePolygon(points).map((tri,i)=>({role,shade:shades[i%shades.length]??0,points:tri}));
+const centroid=(points:readonly Vec2[]):Vec2=>[points.reduce((s,p)=>s+p[0],0)/Math.max(1,points.length),points.reduce((s,p)=>s+p[1],0)/Math.max(1,points.length)];
+const scalePolygon=(points:readonly Vec2[],sx:number,sy:number,dy=0):Vec2[]=>{const[cx,cy]=centroid(points);return points.map(([x,y])=>[cx+(x-cx)*sx,cy+(y-cy)*sy+dy]);};
+const ellipseTriangles=(cx:number,cy:number,rx:number,ry:number,segments=10):GeneratedVariantTriangle<GeneratedEyeRole>[]=>{const ring:Vec2[]=[];for(let i=0;i<segments;i++){const a=i*Math.PI*2/segments;ring.push([cx+Math.cos(a)*rx,cy+Math.sin(a)*ry]);}return polygonTriangles('highlight',ring);};
+const starTriangles=(cx:number,cy:number,r:number,inner=.34,points=4):GeneratedVariantTriangle<GeneratedEyeRole>[]=>{const ring:Vec2[]=[];for(let i=0;i<points*2;i++){const a=-Math.PI/2+i*Math.PI/points,rr=i%2===0?r:r*inner;ring.push([cx+Math.cos(a)*rr,cy+Math.sin(a)*rr]);}return polygonTriangles('highlight',ring);};
+const WHITE_INSET:Record<EyeStyleId,readonly [number,number,number]>={bright:[.82,.78,-.006],determined:[.84,.70,-.004],sharp:[.84,.68,-.004],round:[.82,.80,-.004],soft:[.85,.72,-.003],sleepy:[.88,.60,-.006],sparkle:[.82,.80,-.004],closed:[0,0,0],narrow:[.89,.58,-.004],'side-glance':[.90,.72,-.003]};
+function contourEye(id:EyeStyleId):GeneratedVariantTriangle<GeneratedEyeRole>[] {
+  const shape=EYE_CONTOUR_SHAPES[id],out:GeneratedVariantTriangle<GeneratedEyeRole>[]=[];
+  out.push(...polygonTriangles('outline',shape.outer));
+  if(id==='closed')return out;
+  const [sx,sy,dy]=WHITE_INSET[id],white=scalePolygon(shape.outer,sx,sy,dy);out.push(...polygonTriangles('white',white));
+  if(shape.iris.length)out.push(...polygonTriangles('eyes',shape.iris,[-7,-3,2,6,1,-4]));
+  if(shape.pupil.length)out.push(...polygonTriangles('pupil',shape.pupil));
+  if(shape.iris.length){const b=boundsOfPoints(shape.iris),w=b.maxX-b.minX,h=b.maxY-b.minY,cx=b.minX+w*.31,cy=b.maxY-h*.20;
+    if(id==='sparkle')out.push(...starTriangles(cx,cy,Math.min(w,h)*.23,.28,4),...starTriangles(b.minX+w*.70,b.minY+h*.31,Math.min(w,h)*.12,.28,4));
+    else out.push(...ellipseTriangles(cx,cy,w*(id==='side-glance'?.10:.12),h*.14,10));
   }
   return out;
 }
-const bounds=(items:readonly GeneratedVariantTriangle<string>[]):ReferenceBounds=>{let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const item of items)for(const[x,y]of item.points){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}return{minX,minY,maxX,maxY};};
-const fit=(p:Vec2,from:ReferenceBounds,to:ReferenceBounds):Vec2=>{const nx=(p[0]-from.minX)/Math.max(from.maxX-from.minX,.0001),ny=(p[1]-from.minY)/Math.max(from.maxY-from.minY,.0001);return[to.minX+nx*(to.maxX-to.minX),to.minY+ny*(to.maxY-to.minY)];};
-const ellipseTriangles=(cx:number,cy:number,rx:number,ry:number,segments=8):GeneratedVariantTriangle<GeneratedEyeRole>[]=>{const out:GeneratedVariantTriangle<GeneratedEyeRole>[]=[];for(let i=0;i<segments;i++){const a=i*Math.PI*2/segments,b=(i+1)*Math.PI*2/segments;out.push({role:'highlight',shade:0,points:[[cx,cy],[cx+Math.cos(a)*rx,cy+Math.sin(a)*ry],[cx+Math.cos(b)*rx,cy+Math.sin(b)*ry]]});}return out;};
-const starTriangles=(cx:number,cy:number,r:number,inner=.34,points=4):GeneratedVariantTriangle<GeneratedEyeRole>[]=>{const ring:Vec2[]=[];for(let i=0;i<points*2;i++){const a=-Math.PI/2+i*Math.PI/points,rr=i%2===0?r:r*inner;ring.push([cx+Math.cos(a)*rr,cy+Math.sin(a)*rr]);}return ring.map((p,i)=>({role:'highlight' as const,shade:0,points:[[cx,cy],p,ring[(i+1)%ring.length]] as readonly [Vec2,Vec2,Vec2]}));};
-const addSourceLikeHighlights=(id:EyeStyleId,items:GeneratedVariantTriangle<GeneratedEyeRole>[])=>{
-  if(id==='closed')return items;
-  const iris=items.filter(item=>item.role==='eyes');if(!iris.length)return items;
-  const b=bounds(iris),w=b.maxX-b.minX,h=b.maxY-b.minY,cx=b.minX+w*.31,cy=b.maxY-h*.22;
-  if(id==='sparkle')return[...items,...starTriangles(cx,cy,Math.min(w,h)*.24,.30,4),...starTriangles(b.minX+w*.70,b.minY+h*.30,Math.min(w,h)*.12,.30,4)];
-  const size=id==='bright'||id==='round'?1:id==='side-glance'?.86:.90;
-  return[...items,...ellipseTriangles(cx,cy,w*.13*size,h*.15*size,8)];
-};
-const fitEyes=(id:EyeStyleId,items:GeneratedVariantTriangle<GeneratedEyeRole>[]):GeneratedVariantTriangle<GeneratedEyeRole>[]=>{const from=bounds(items),to=EYE_REFERENCE_BOUNDS[id],fitted=items.map(item=>({...item,points:item.points.map(p=>fit(p,from,to)) as unknown as readonly [Vec2,Vec2,Vec2]}));return addSourceLikeHighlights(id,fitted);};
-const eyeRaw={...EYE_RAW_A,...EYE_RAW_B};
 
 export const GENERATED_HAIR_VARIANTS=Object.fromEntries((Object.keys(HAIR_PACKED_INDEX) as HairStyleId[]).map(id=>[id,decodePackedHair(id)])) as unknown as Record<HairStyleId,readonly GeneratedVariantTriangle<GeneratedHairRole>[]>;
-export const GENERATED_EYE_VARIANTS=Object.fromEntries(Object.entries(eyeRaw).map(([id,raw])=>[id,fitEyes(id as EyeStyleId,decodeEye(raw))])) as unknown as Record<EyeStyleId,readonly GeneratedVariantTriangle<GeneratedEyeRole>[]>;
+export const GENERATED_EYE_VARIANTS=Object.fromEntries((Object.keys(EYE_CONTOUR_SHAPES) as EyeStyleId[]).map(id=>[id,contourEye(id)])) as Record<EyeStyleId,readonly GeneratedVariantTriangle<GeneratedEyeRole>[]>;
