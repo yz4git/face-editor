@@ -15,31 +15,17 @@ Generated source sheets can leave very small detached triangles near a cell edge
 
 ## Hair fitting and depth
 
-Each hairstyle receives two candidate seeds:
+Each hairstyle receives two candidate seeds: a seed derived automatically from its own central geometry cloud and current face bounds, plus the previous proven calibration when one exists as a safety candidate. A bounded search selects the lower-error placement. Future imported hair styles therefore do not require a new hand-authored seed just to enter the fitting pipeline.
 
-1. a seed derived automatically from the hairstyle's own central geometry cloud and current face bounds;
-2. the previous proven calibration when one exists, retained only as a safety candidate.
-
-A bounded search selects the lower-error placement. This lets future imported hair styles work without requiring a new hand-authored seed while preserving the quality of existing fits.
-
-After fitting, transformed hair triangles are split by anatomy:
-
-- cap/tails/outside-face geometry -> `hair-back`
-- bangs and cheek-length locks overlapping the face -> `hair-front`
-- matching accent geometry -> `hair-accent`
-
-This avoids the old all-in-front failure while preserving locks that should cover cheeks.
+After fitting, transformed hair triangles are split by anatomy: cap/tails/outside-face geometry goes to `hair-back`; bangs and cheek-length locks overlapping the face go to `hair-front`; matching accent geometry goes to `hair-accent`. This avoids the old all-in-front failure while preserving locks that should cover cheeks.
 
 ## Reference-anatomy targets
 
-The neutral target positions are derived from the earlier high-fidelity reference portrait rather than arbitrary percentages. In face-relative coordinates the target centers are approximately:
+The neutral target positions are derived from the earlier high-fidelity reference portrait rather than arbitrary percentages. In face-relative coordinates the target centers are approximately eye line `y = 0.475`, brow line `y = 0.735`, nose `y = 0.325`, and mouth `y = 0.173`. Individual generated shapes keep their own aspect ratio and are contained inside the corresponding target rectangle.
 
-- eye line: `y = 0.475`
-- brow line: `y = 0.735`
-- nose: `y = 0.325`
-- mouth: `y = 0.173`
+## Garment fitting
 
-Individual generated shapes keep their own aspect ratio and are contained inside the corresponding target rectangle.
+Modular garments are not scaled against sleeve-to-sleeve width. The current jacket's jacket-only mesh first produces an outer frame, then x/y quantiles produce a torso core. Hood, shirt, strap/harness and accent targets are calculated from that torso core. This is especially important for switching between long-sleeve, short-sleeve and vest silhouettes.
 
 ## Semantic z-order
 
@@ -49,27 +35,17 @@ The compiler resolves source-sheet insertion order into stable semantic layers:
 
 ## Quality gates
 
-`getCharacterAutoFitReport()` records source bounds, target bounds, fitted bounds and score for every selected part. It also checks:
-
-- fit score limits
-- modular garment overlap with the current jacket
-- left/right eye symmetry
-- left/right brow symmetry
-- brows above eyes
-- nose below the eye line
-- mouth below the nose
+`getCharacterAutoFitReport()` records source bounds, target bounds, fitted bounds and score for every selected part. It also checks fit score limits, modular garment overlap with the current jacket, left/right eye symmetry, left/right brow symmetry, brows above eyes, nose below the eye line, and mouth below the nose.
 
 The Canvas2D Visual Audit additionally checks non-empty rendering, framing/clipping and full editor screenshots.
 
 ## Exhaustive pairwise sweep
 
-`autoFitSweep.ts` deterministically creates character definitions that cover every value-pair across the 11 selectable families. There are 92 selectable parts; the sweep proves all part IDs are seen and that every cross-family pair obligation is covered. Other families are filled with a stable hash so each pair is exercised among varied neighbors.
-
-The browser only loads and runs this sweep when `visualAudit=1`; normal editor sessions do not pay the exhaustive audit cost.
+`autoFitSweep.ts` deterministically creates character definitions that cover every value-pair across the 11 selectable families. There are 92 selectable parts; the sweep proves all part IDs are seen and that every cross-family pair obligation is covered. Other families are filled with a stable hash so each pair is exercised among varied neighbors. The browser only loads and runs this sweep when `visualAudit=1`; `sweep=0` keeps audit rendering enabled without rerunning the exhaustive sweep.
 
 ## Screen audit
 
-After the geometry sweep succeeds, Playwright rotates through 20 full characters with different neighboring parts and stores both character-only and full-editor captures. It then reloads the real editor at an iPhone-landscape-sized `844 x 390` viewport and rejects clipping before taking a phone screenshot.
+After the geometry sweep succeeds, Playwright rotates through 20 full characters with different neighboring parts and stores both character-only and full-editor captures. It then reloads the real editor with `sweep=0` at an iPhone-landscape-sized `844 x 390` viewport and rejects clipping before taking a phone screenshot.
 
 Artifacts when GitHub Actions can execute:
 
