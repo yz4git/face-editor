@@ -3,12 +3,13 @@ import { compileCharacter, getCharacterAutoFitReport } from '../src/core/compile
 import { DEFAULT_CHARACTER } from '../src/data/parts';
 import { ACCENT_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, HOOD_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS, SHIRT_PARTS, STRAP_PARTS } from '../src/data/partLibrary';
 import type { AccentStyleId, BrowStyleId, EyeStyleId, FaceShapeId, HairStyleId, HoodStyleId, MouthStyleId, NoseStyleId, OutfitStyleId, PartDefinition, ShirtStyleId, StrapStyleId } from '../src/core/types';
-import { coverageBoundsForPart, fitBoundsToRect, LAYER_Z, REFERENCE_ANATOMY_TARGETS } from '../src/core/partAutoFit';
+import { coverageBoundsForPart, fitBoundsToRect, jacketTorsoBounds, LAYER_Z, REFERENCE_ANATOMY_TARGETS } from '../src/core/partAutoFit';
 
 const ids=<T extends string>(record:Record<T,unknown>)=>Object.keys(record) as T[];
 const finiteTransform=(value:{x:number;y:number;scaleX:number;scaleY:number;rotation:number})=>[value.x,value.y,value.scaleX,value.scaleY,value.rotation].every(Number.isFinite)&&value.scaleX>0&&value.scaleY>0;
 const centerX=(b:{minX:number;maxX:number})=>(b.minX+b.maxX)/2;
 const center=(r:readonly[number,number,number,number])=>[(r[0]+r[2])/2,(r[1]+r[3])/2] as const;
+const width=(b:{minX:number;maxX:number})=>b.maxX-b.minX;
 const hair=ids<HairStyleId>(HAIR_PARTS),faces=ids<FaceShapeId>(FACE_PARTS),eyes=ids<EyeStyleId>(EYE_PARTS),brows=ids<BrowStyleId>(BROW_PARTS),noses=ids<NoseStyleId>(NOSE_PARTS),mouths=ids<MouthStyleId>(MOUTH_PARTS),outfits=ids<OutfitStyleId>(OUTFIT_PARTS),hoods=ids<HoodStyleId>(HOOD_PARTS),shirts=ids<ShirtStyleId>(SHIRT_PARTS),straps=ids<StrapStyleId>(STRAP_PARTS),accents=ids<AccentStyleId>(ACCENT_PARTS);
 const rotate=(length:number,index:number,stride:number,offset:number)=>(index*stride+offset)%length;
 
@@ -24,9 +25,11 @@ describe('92-part deterministic auto-fit',()=>{
   });
 
   it('uses the proven reference portrait as the neutral facial landmark calibration',()=>{
-    const eye=center(REFERENCE_ANATOMY_TARGETS.eyeLeft),brow=center(REFERENCE_ANATOMY_TARGETS.browLeft),nose=center(REFERENCE_ANATOMY_TARGETS.nose),mouth=center(REFERENCE_ANATOMY_TARGETS.mouth);
-    expect(eye[1]).toBeGreaterThan(.45);expect(eye[1]).toBeLessThan(.50);expect(brow[1]).toBeGreaterThan(.71);expect(brow[1]).toBeLessThan(.75);expect(nose[1]).toBeGreaterThan(.31);expect(nose[1]).toBeLessThan(.34);expect(mouth[1]).toBeGreaterThan(.16);expect(mouth[1]).toBeLessThan(.19);
-    expect(brow[1]).toBeGreaterThan(eye[1]);expect(eye[1]).toBeGreaterThan(nose[1]);expect(nose[1]).toBeGreaterThan(mouth[1]);
+    const eye=center(REFERENCE_ANATOMY_TARGETS.eyeLeft),brow=center(REFERENCE_ANATOMY_TARGETS.browLeft),nose=center(REFERENCE_ANATOMY_TARGETS.nose),mouth=center(REFERENCE_ANATOMY_TARGETS.mouth);expect(eye[1]).toBeGreaterThan(.45);expect(eye[1]).toBeLessThan(.50);expect(brow[1]).toBeGreaterThan(.71);expect(brow[1]).toBeLessThan(.75);expect(nose[1]).toBeGreaterThan(.31);expect(nose[1]).toBeLessThan(.34);expect(mouth[1]).toBeGreaterThan(.16);expect(mouth[1]).toBeLessThan(.19);expect(brow[1]).toBeGreaterThan(eye[1]);expect(eye[1]).toBeGreaterThan(nose[1]);expect(nose[1]).toBeGreaterThan(mouth[1]);
+  });
+
+  it('derives a sleeve-independent torso core for every jacket silhouette',()=>{
+    for(const outfit of outfits){const c=structuredClone(DEFAULT_CHARACTER);c.outfitStyle=outfit;const jacket=getCharacterAutoFitReport(c).entries.find(e=>e.family==='jacket')!,torso=jacketTorsoBounds(OUTFIT_PARTS[outfit],jacket.transform);expect(width(torso)).toBeGreaterThan(width(jacket.fitted)*.35);expect(width(torso)).toBeLessThan(width(jacket.fitted)*.9);expect(centerX(torso)).toBeGreaterThan(jacket.fitted.minX);expect(centerX(torso)).toBeLessThan(jacket.fitted.maxX);}
   });
 
   it('splits generated hairstyle geometry across front and back anatomical depth',()=>{
