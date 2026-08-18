@@ -6,7 +6,7 @@ import { REFERENCE_BODY_FIT_METRICS } from '../src/data/referenceBodyGeometry';
 
 describe('sample-derived polygon geometry',()=>{
   it('keeps all ten hairstyles aligned to high-IoU source-sheet geometry',()=>{
-    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);expect(GENERATED_VARIATION_SOURCE.fitRevision).toBe(12);expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
+    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);expect(GENERATED_VARIATION_SOURCE.fitRevision).toBe(13);expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
     for(const [id,hair] of Object.entries(HAIR_PARTS)){
       const key=id as keyof typeof HAIR_REFERENCE_BOUNDS,target=HAIR_REFERENCE_BOUNDS[key],fit=HAIR_REFERENCE_FIT[key];
       expect(hair.tags).toContain('variation-sheet');expect(hair.tags).toContain('face-aligned-v2');expect(hair.triangles.length).toBeGreaterThanOrEqual(fit.triangles);
@@ -18,7 +18,7 @@ describe('sample-derived polygon geometry',()=>{
     for(const id of ['ponytail','side-tail','twin-tail','braid','bun','half-up'] as const)expect(HAIR_PARTS[id].triangles.some(t=>t.layer==='hair-tie')).toBe(true);
   });
 
-  it('reconstructs all ten eyes as tall source-style anime shapes',()=>{
+  it('reconstructs all ten eyes as source-style anime shapes with visible iris color',()=>{
     expect(GENERATED_VARIATION_SOURCE.eyeCount).toBe(10);expect(Object.keys(EYE_PARTS)).toHaveLength(10);
     for(const [id,eye] of Object.entries(EYE_PARTS)){
       expect(eye.tags).toContain('painter-order-v2');const target=EYE_REFERENCE_BOUNDS[id as keyof typeof EYE_REFERENCE_BOUNDS];
