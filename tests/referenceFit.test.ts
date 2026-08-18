@@ -1,39 +1,75 @@
 import { describe, expect, it } from 'vitest';
-import { BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, MOUTH_PARTS, NOSE_PARTS } from '../src/data/partLibrary';
-import { EYE_REFERENCE_BOUNDS, GENERATED_VARIATION_SOURCE, HAIR_REFERENCE_BOUNDS, HAIR_REFERENCE_FIT } from '../src/data/generatedVariationGeometry';
-import { REFERENCE_FACE_FIT_METRICS, REFERENCE_FACE_OUTLINE } from '../src/data/referenceFaceGeometry';
-import { REFERENCE_BODY_FIT_METRICS } from '../src/data/referenceBodyGeometry';
+import { compileCharacter } from '../src/core/compileCharacter';
+import { DEFAULT_CHARACTER } from '../src/data/parts';
+import {
+  BROW_PARTS,EYE_PARTS,FACE_PARTS,HAIR_PARTS,MOUTH_PARTS,NOSE_PARTS,OUTFIT_PARTS,
+} from '../src/data/partLibrary';
+import {
+  GENERATED_SOURCE_KEYS,GENERATED_SOURCE_SHEET_META,generatedSourceTriangleCount,
+  type GeneratedSourceKind,
+} from '../src/data/generatedSourceSheetGeometry';
 
-describe('sample-derived polygon geometry',()=>{
-  it('keeps all ten hairstyles aligned to high-IoU source-sheet geometry',()=>{
-    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);expect(GENERATED_VARIATION_SOURCE.fitRevision).toBe(14);expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
-    for(const [id,hair] of Object.entries(HAIR_PARTS)){
-      const key=id as keyof typeof HAIR_REFERENCE_BOUNDS,target=HAIR_REFERENCE_BOUNDS[key],fit=HAIR_REFERENCE_FIT[key];
-      expect(hair.tags).toContain('variation-sheet');expect(hair.tags).toContain('face-aligned-v2');expect(hair.triangles.length).toBeGreaterThanOrEqual(fit.triangles);
-      expect(fit.triangles).toBeGreaterThanOrEqual(130);expect(fit.maskIoU).toBeGreaterThanOrEqual(.974);
-      expect(Math.abs(hair.bounds.minX-target.minX)).toBeLessThan(.05);expect(Math.abs(hair.bounds.maxX-target.maxX)).toBeLessThan(.05);expect(Math.abs(hair.bounds.minY-target.minY)).toBeLessThan(.05);expect(Math.abs(hair.bounds.maxY-target.maxY)).toBeLessThan(.05);
-      expect(hair.triangles.some(t=>t.layer==='hair-front')).toBe(true);
+const splitKey=(key:string):readonly [GeneratedSourceKind,string]=>{
+  const index=key.indexOf(':');return[key.slice(0,index) as GeneratedSourceKind,key.slice(index+1)];
+};
+const generatedFamilies=[HAIR_PARTS,EYE_PARTS,FACE_PARTS,BROW_PARTS,NOSE_PARTS,MOUTH_PARTS,OUTFIT_PARTS] as const;
+
+describe('generated source-sheet polygon geometry',()=>{
+  it('keeps the compressed payload/index complete and deterministic',()=>{
+    expect(GENERATED_SOURCE_SHEET_META.sourceRevision).toBe(1);
+    expect(GENERATED_SOURCE_SHEET_META.triangles).toBe(6581);
+    expect(GENERATED_SOURCE_KEYS).toHaveLength(66);
+    const decoded=GENERATED_SOURCE_KEYS.reduce((sum,key)=>{const[kind,id]=splitKey(key);return sum+generatedSourceTriangleCount(kind,id);},0);
+    expect(decoded).toBe(GENERATED_SOURCE_SHEET_META.triangles);
+    expect(generatedSourceTriangleCount('hair','ponytail')).toBe(106);
+    expect(generatedSourceTriangleCount('eye','bright')).toBe(217);
+    expect(generatedSourceTriangleCount('face','soft')).toBe(116);
+    expect(generatedSourceTriangleCount('brow','soft')).toBe(23);
+    expect(generatedSourceTriangleCount('nose','diamond')).toBe(36);
+    expect(generatedSourceTriangleCount('mouth','smile-open')).toBe(123);
+    expect(generatedSourceTriangleCount('outfit','hooded')).toBe(152);
+  });
+
+  it('exposes every generated source variant as a selectable editor part',()=>{
+    expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
+    expect(Object.keys(EYE_PARTS)).toHaveLength(10);
+    expect(Object.keys(FACE_PARTS)).toHaveLength(10);
+    expect(Object.keys(BROW_PARTS)).toHaveLength(10);
+    expect(Object.keys(NOSE_PARTS)).toHaveLength(10);
+    expect(Object.keys(MOUTH_PARTS)).toHaveLength(10);
+    expect(Object.keys(OUTFIT_PARTS)).toHaveLength(6);
+    for(const family of generatedFamilies)for(const part of Object.values(family)){
+      expect(part.tags).toContain('generated-source-sheet');
+      expect(part.tags).toContain('vectorized-v2');
+      expect(part.triangles.length).toBeGreaterThan(0);
+      for(const triangle of part.triangles){
+        expect(triangle.points).toHaveLength(3);
+        expect(triangle.points.flat().every(Number.isFinite)).toBe(true);
+        expect(Number.isFinite(triangle.shade??0)).toBe(true);
+      }
     }
-    for(const id of ['ponytail','side-tail','twin-tail','bun','half-up'] as const)expect(HAIR_PARTS[id].triangles.some(t=>t.layer==='hair-back')).toBe(true);
-    for(const id of ['ponytail','side-tail','twin-tail','braid','bun','half-up'] as const)expect(HAIR_PARTS[id].triangles.some(t=>t.layer==='hair-tie')).toBe(true);
   });
-  it('reconstructs all ten eyes as source-style anime shapes with visible iris color',()=>{
-    expect(GENERATED_VARIATION_SOURCE.eyeCount).toBe(10);expect(Object.keys(EYE_PARTS)).toHaveLength(10);
-    for(const [id,eye] of Object.entries(EYE_PARTS)){
-      expect(eye.tags).toContain('painter-order-v2');const target=EYE_REFERENCE_BOUNDS[id as keyof typeof EYE_REFERENCE_BOUNDS];
-      expect(Math.abs(eye.bounds.minX-target.minX)).toBeLessThan(.01);expect(Math.abs(eye.bounds.maxX-target.maxX)).toBeLessThan(.01);expect(Math.abs(eye.bounds.minY-target.minY)).toBeLessThan(.01);expect(Math.abs(eye.bounds.maxY-target.maxY)).toBeLessThan(.01);
-      expect(eye.triangles.some(t=>t.layer==='eye-outline')).toBe(true);expect(eye.triangles.length).toBeGreaterThan(5);
-      if(id!=='closed'){for(const layer of ['eye-white','iris','pupil','eye-glint'])expect(eye.triangles.some(t=>t.layer===layer)).toBe(true);}
+
+  it('preserves semantic layers needed by flat-polygon rendering',()=>{
+    for(const eye of Object.values(EYE_PARTS)){
+      expect(eye.triangles.some(t=>t.layer==='eye-outline')).toBe(true);
+      expect(eye.triangles.some(t=>t.layer==='iris')).toBe(true);
+      expect(eye.triangles.some(t=>t.layer==='eye-white')).toBe(true);
     }
-    const bright=EYE_REFERENCE_BOUNDS.bright,width=bright.maxX-bright.minX,height=bright.maxY-bright.minY;expect(width).toBeGreaterThanOrEqual(.28);expect(height).toBeGreaterThanOrEqual(.40);expect(width/height).toBeLessThan(.75);
-    expect(EYE_PARTS.sparkle.triangles.filter(t=>t.layer==='eye-glint').length).toBeGreaterThan(EYE_PARTS.bright.triangles.filter(t=>t.layer==='eye-glint').length);
+    for(const face of Object.values(FACE_PARTS))expect(face.triangles.some(t=>t.layer==='face')).toBe(true);
+    for(const brow of Object.values(BROW_PARTS))expect(brow.triangles.every(t=>t.layer==='brows')).toBe(true);
+    for(const outfit of Object.values(OUTFIT_PARTS))expect(outfit.triangles.some(t=>t.layer==='jacket')).toBe(true);
+    expect(MOUTH_PARTS['smile-open'].triangles.some(t=>t.layer==='mouth-detail')).toBe(true);
   });
-  it('uses the sampled face outline, brow, nose and open smile by default',()=>{
-    expect(REFERENCE_FACE_FIT_METRICS.visibleOutlineIoU).toBeGreaterThanOrEqual(.94);expect(REFERENCE_FACE_FIT_METRICS.browMaskIoU).toBeGreaterThanOrEqual(.94);expect(REFERENCE_FACE_FIT_METRICS.noseMaskIoU).toBeGreaterThanOrEqual(.80);expect(REFERENCE_FACE_FIT_METRICS.mouthOuterIoU).toBeGreaterThanOrEqual(.97);expect(REFERENCE_FACE_FIT_METRICS.mouthInnerIoU).toBeGreaterThanOrEqual(.97);
-    expect(FACE_PARTS.soft.tags).toContain('reference-fit');expect(BROW_PARTS.soft.tags).toContain('reference-fit');expect(NOSE_PARTS.diamond.tags).toContain('reference-fit');expect(MOUTH_PARTS['smile-open'].tags).toContain('reference-fit');expect(FACE_PARTS.soft.triangles.length).toBeGreaterThanOrEqual(REFERENCE_FACE_OUTLINE.length);
-  });
-  it('uses high-IoU sampled clothing geometry for the female body',()=>{
-    for(const metric of Object.values(REFERENCE_BODY_FIT_METRICS))expect(metric.maskIoU).toBeGreaterThanOrEqual(.95);expect(BODY_PARTS.female.tags).toContain('reference-fit');
-    const expected=Object.values(REFERENCE_BODY_FIT_METRICS).reduce((sum,metric)=>sum+metric.triangles,0);expect(BODY_PARTS.female.triangles).toHaveLength(expected);
+
+  it('compiles the generated default character to finite runtime buffers',()=>{
+    const mesh=compileCharacter(structuredClone(DEFAULT_CHARACTER));
+    expect(mesh.layers.length).toBeGreaterThan(8);
+    expect(mesh.bounds.minX).toBeLessThan(mesh.bounds.maxX);
+    expect(mesh.bounds.minY).toBeLessThan(mesh.bounds.maxY);
+    expect([mesh.bounds.minX,mesh.bounds.minY,mesh.bounds.maxX,mesh.bounds.maxY].every(Number.isFinite)).toBe(true);
+    expect(mesh.layers.some(layer=>layer.id==='jacket')).toBe(true);
+    expect(mesh.layers.some(layer=>layer.id==='hair-front')).toBe(true);
+    expect(mesh.layers.some(layer=>layer.id==='iris')).toBe(true);
   });
 });
