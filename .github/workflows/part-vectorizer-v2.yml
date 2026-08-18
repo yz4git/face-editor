@@ -7,6 +7,22 @@ on:
       - 'tools/part-vectorizer-v2/**'
       - '.github/workflows/part-vectorizer-v2.yml'
   workflow_dispatch:
+    inputs:
+      manifest_path:
+        description: 'Optional repository-relative manifest to vectorize after self-tests'
+        required: false
+        type: string
+        default: ''
+      fast:
+        description: 'Use one balanced VTracer profile instead of the 3-profile quality sweep'
+        required: false
+        type: boolean
+        default: false
+      no_fail:
+        description: 'Produce audits even when a requested sheet misses quality gates'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   vectorizer:
@@ -23,6 +39,17 @@ jobs:
       - name: Run parser and end-to-end vectorizer tests
         working-directory: tools/part-vectorizer-v2
         run: npm test
+      - name: Vectorize requested authoring sheet
+        if: github.event_name == 'workflow_dispatch' && inputs.manifest_path != ''
+        shell: bash
+        run: |
+          EXTRA=()
+          if [ "${{ inputs.fast }}" = "true" ]; then EXTRA+=(--fast); fi
+          if [ "${{ inputs.no_fail }}" = "true" ]; then EXTRA+=(--no-fail); fi
+          node tools/part-vectorizer-v2/cli.mjs \
+            --manifest "${{ inputs.manifest_path }}" \
+            --output "$GITHUB_WORKSPACE/tools/part-vectorizer-v2/manual-output" \
+            "${EXTRA[@]}"
       - name: Upload vectorizer fixture audit
         uses: actions/upload-artifact@v4
         if: always()
@@ -30,5 +57,6 @@ jobs:
           name: part-vectorizer-v2-audit
           path: |
             tools/part-vectorizer-v2/test/output/
+            tools/part-vectorizer-v2/manual-output/
             tools/part-vectorizer-v2/package-lock.json
           if-no-files-found: warn
