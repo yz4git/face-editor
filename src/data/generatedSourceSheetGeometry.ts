@@ -13,16 +13,8 @@ export interface GeneratedSourceTriangle { role: GeneratedSourceRole; shade: num
 export const GENERATED_SOURCE_SHEET_META = {
   sourceRevision: 1,
   method: 'generated-source-sheet -> semantic masks -> feature/corner sampling -> Delaunay -> runtime triangle pack',
-  hairCount: 10,
-  eyeCount: 10,
-  faceCount: 10,
-  browCount: 10,
-  noseCount: 10,
-  mouthCount: 10,
-  outfitCount: 6,
-  triangles: 6581,
-  recordBytes: 14,
-  coordinateScale: 10000,
+  hairCount: 10,eyeCount: 10,faceCount: 10,browCount: 10,noseCount: 10,mouthCount: 10,outfitCount: 6,
+  triangles: 6581,recordBytes: 14,coordinateScale: 10000,compressedBase64Length: 62860,
 } as const;
 
 const ROLES = ['hair','accent','outline','white','eyes','pupil','highlight','skin','brows','mouth','tongue','jacket','shirt','hood'] as const;
@@ -30,43 +22,23 @@ const INDEX = {"hair:ponytail":[0,106],"hair:braid":[106,109],"hair:bob":[215,10
 type GeneratedSourceKey = keyof typeof INDEX;
 
 const PACK = SOURCE_SHEET_GZIP_0 + SOURCE_SHEET_GZIP_1 + SOURCE_SHEET_GZIP_2A + SOURCE_SHEET_GZIP_2B + SOURCE_SHEET_GZIP_3A + SOURCE_SHEET_GZIP_3B;
-const RECORD_BYTES = GENERATED_SOURCE_SHEET_META.recordBytes;
-const COORD_SCALE = GENERATED_SOURCE_SHEET_META.coordinateScale;
+const RECORD_BYTES = GENERATED_SOURCE_SHEET_META.recordBytes,COORD_SCALE = GENERATED_SOURCE_SHEET_META.coordinateScale;
+if(PACK.length!==GENERATED_SOURCE_SHEET_META.compressedBase64Length)throw new Error(`Generated source-sheet compressed payload length mismatch: ${PACK.length}`);
 
-function decodeBase64(value:string):Uint8Array {
-  const binary=atob(value),out=new Uint8Array(binary.length);
-  for(let i=0;i<binary.length;i++)out[i]=binary.charCodeAt(i);
-  return out;
-}
-async function inflateGzip(value:string):Promise<Uint8Array>{
+function decodeBase64(value:string):Uint8Array<ArrayBuffer>{const binary=atob(value),out=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)out[i]=binary.charCodeAt(i);return out;}
+async function inflateGzip(value:string):Promise<Uint8Array<ArrayBuffer>>{
   if(typeof DecompressionStream==='undefined')throw new Error('This browser does not support gzip DecompressionStream required by generated polygon assets.');
-  const compressed=decodeBase64(value);
-  const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'));
+  const compressed=decodeBase64(value),copy=new Uint8Array(compressed.byteLength);copy.set(compressed);
+  const stream=new Blob([copy.buffer]).stream().pipeThrough(new DecompressionStream('gzip'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-const raw=await inflateGzip(PACK);
-const expectedBytes=GENERATED_SOURCE_SHEET_META.triangles*RECORD_BYTES;
+const raw=await inflateGzip(PACK),expectedBytes=GENERATED_SOURCE_SHEET_META.triangles*RECORD_BYTES;
 if(raw.byteLength!==expectedBytes)throw new Error(`Generated source-sheet geometry length mismatch: ${raw.byteLength} !== ${expectedBytes}`);
 const view=new DataView(raw.buffer,raw.byteOffset,raw.byteLength);
-
-function decodeTriangle(recordIndex:number):GeneratedSourceTriangle{
-  const off=recordIndex*RECORD_BYTES;
-  const point=(index:number):Vec2=>[view.getInt16(off+index*4,true)/COORD_SCALE,view.getInt16(off+index*4+2,true)/COORD_SCALE];
-  const roleIndex=view.getUint8(off+13),role=ROLES[roleIndex];
-  if(!role)throw new Error(`Unknown generated source role ${roleIndex} at triangle ${recordIndex}`);
-  return{points:[point(0),point(1),point(2)],shade:view.getInt8(off+12),role};
-}
-
+function decodeTriangle(recordIndex:number):GeneratedSourceTriangle{const off=recordIndex*RECORD_BYTES,point=(index:number):Vec2=>[view.getInt16(off+index*4,true)/COORD_SCALE,view.getInt16(off+index*4+2,true)/COORD_SCALE],roleIndex=view.getUint8(off+13),role=ROLES[roleIndex];if(!role)throw new Error(`Unknown generated source role ${roleIndex} at triangle ${recordIndex}`);return{points:[point(0),point(1),point(2)],shade:view.getInt8(off+12),role};}
 const PARTS={} as Record<GeneratedSourceKey,readonly GeneratedSourceTriangle[]>;
-for(const [key,[start,count]] of Object.entries(INDEX) as [GeneratedSourceKey,readonly [number,number]][]){
-  PARTS[key]=Array.from({length:count},(_,i)=>decodeTriangle(start+i));
-}
-
-export function generatedSourceTriangles(kind:GeneratedSourceKind,id:string):readonly GeneratedSourceTriangle[]{
-  const key=`${kind}:${id}` as GeneratedSourceKey,triangles=PARTS[key];
-  if(!triangles)throw new Error(`No generated source-sheet geometry for ${key}`);
-  return triangles;
-}
+for(const [key,[start,count]] of Object.entries(INDEX) as [GeneratedSourceKey,readonly [number,number]][])PARTS[key]=Array.from({length:count},(_,i)=>decodeTriangle(start+i));
+export function generatedSourceTriangles(kind:GeneratedSourceKind,id:string):readonly GeneratedSourceTriangle[]{const key=`${kind}:${id}` as GeneratedSourceKey,triangles=PARTS[key];if(!triangles)throw new Error(`No generated source-sheet geometry for ${key}`);return triangles;}
 export function generatedSourceTriangleCount(kind:GeneratedSourceKind,id:string):number{return generatedSourceTriangles(kind,id).length;}
 export const GENERATED_SOURCE_KEYS=Object.freeze(Object.keys(INDEX) as GeneratedSourceKey[]);
