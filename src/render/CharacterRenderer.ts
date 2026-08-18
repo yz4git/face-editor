@@ -1,8 +1,10 @@
 import * as THREE from 'three';
-import { compileCharacter } from '../core/compileCharacter';
+import { compileCharacter, getCharacterAutoFitReport } from '../core/compileCharacter';
 import type { CharacterDefinition, CompiledPolygonCharacter } from '../core/types';
+import type { AutoFitReport } from '../core/partAutoFit';
 
 export type RendererMode='webgl'|'canvas2d';
+type AuditWindow=Window&{__FACE_EDITOR_RENDERER_MODE__?:RendererMode;__FACE_EDITOR_AUTOFIT_REPORT__?:AutoFitReport};
 
 export class CharacterRenderer{
   private scene=new THREE.Scene();
@@ -30,9 +32,9 @@ export class CharacterRenderer{
     }catch{this.renderer=null;}
   }
   private enableCanvasFallback(){if(this.fallbackCanvas)return;const canvas=document.createElement('canvas');canvas.className='character-canvas canvas2d-fallback';canvas.dataset.renderer='canvas2d';this.fallbackCanvas=canvas;this.fallbackContext=canvas.getContext('2d');this.host.append(canvas);this.mode='canvas2d';this.publishMode();}
-  private publishMode(){this.host.dataset.rendererMode=this.mode;(window as Window&{__FACE_EDITOR_RENDERER_MODE__?:RendererMode}).__FACE_EDITOR_RENDERER_MODE__=this.mode;this.host.dispatchEvent(new CustomEvent('renderer-mode',{detail:{mode:this.mode}}));}
+  private publishMode(){this.host.dataset.rendererMode=this.mode;(window as AuditWindow).__FACE_EDITOR_RENDERER_MODE__=this.mode;this.host.dispatchEvent(new CustomEvent('renderer-mode',{detail:{mode:this.mode}}));}
   setCharacter(definition:CharacterDefinition):CompiledPolygonCharacter{
-    const compiled=compileCharacter(definition);this.current=compiled;this.disposeMeshes();
+    const compiled=compileCharacter(definition),report=getCharacterAutoFitReport(definition);this.current=compiled;(window as AuditWindow).__FACE_EDITOR_AUTOFIT_REPORT__=report;this.host.dataset.autofit='v2';this.host.dataset.autofitScore=report.entries.reduce((sum,e)=>sum+e.score,0).toFixed(4);this.disposeMeshes();
     if(this.renderer)for(const layer of compiled.layers){const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(layer.positions,3));geometry.setAttribute('color',new THREE.BufferAttribute(layer.colors,3));geometry.setIndex(new THREE.BufferAttribute(layer.indices,1));const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false});const mesh=new THREE.Mesh(geometry,material);mesh.renderOrder=layer.zIndex;mesh.position.z=layer.zIndex*.002;mesh.name=layer.id;this.root.add(mesh);}
     this.frame(compiled);this.render();return compiled;
   }
