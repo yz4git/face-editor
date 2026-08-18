@@ -1,19 +1,46 @@
 import type { EyeStyleId, HairStyleId, Vec2 } from '../core/types';
 import { EYE_RAW_A } from './generated/eyeRawA';
 import { EYE_RAW_B } from './generated/eyeRawB';
-import { HAIR_PACKED_BOUNDS, HAIR_PACKED_CHARS, HAIR_PACKED_FIT, HAIR_PACKED_INDEX } from './generated/hairPacked';
+import { HAIR_PACKED_CHARS, HAIR_PACKED_FIT, HAIR_PACKED_INDEX } from './generated/hairPacked';
 
 export type GeneratedHairRole='hair'|'hairTie';
 export type GeneratedEyeRole='outline'|'white'|'eyes'|'pupil'|'highlight';
 export interface GeneratedVariantTriangle<R extends string>{role:R;points:readonly [Vec2,Vec2,Vec2];shade:number}
 export interface ReferenceBounds{minX:number;minY:number;maxX:number;maxY:number}
 
-export const GENERATED_VARIATION_SOURCE={kind:'generated-reference-sheet',hairCount:10,eyeCount:10,fitRevision:5,method:'source-sheet mask segmentation + feature-preserving hair Delaunay + face-relative alignment + restored eye painter layers + source-like highlight reconstruction'} as const;
-export const HAIR_REFERENCE_BOUNDS:Record<HairStyleId,ReferenceBounds>=HAIR_PACKED_BOUNDS;
+export const GENERATED_VARIATION_SOURCE={kind:'generated-reference-sheet',hairCount:10,eyeCount:10,fitRevision:6,method:'source-sheet mask segmentation + feature-preserving hair Delaunay + face-relative display calibration + restored eye painter layers + source-like highlight reconstruction'} as const;
+
+// Display-space bounds were re-measured by comparing each in-editor Canvas2D audit
+// against the source variation sheet. The packed geometry still carries the high-IoU
+// source silhouette; this affine stage only corrects its size/placement on the sampled face.
+export const HAIR_REFERENCE_BOUNDS:Record<HairStyleId,ReferenceBounds>={
+  ponytail:{minX:-.82,maxX:1.35,minY:-.35,maxY:2.18},
+  bob:{minX:-.80,maxX:.95,minY:-.10,maxY:1.95},
+  'side-tail':{minX:-.82,maxX:1.45,minY:-.65,maxY:1.95},
+  'twin-tail':{minX:-1.22,maxX:1.30,minY:-.45,maxY:2.05},
+  braid:{minX:-.82,maxX:1.10,minY:-.85,maxY:2.05},
+  long:{minX:-.78,maxX:1.05,minY:-.65,maxY:2.00},
+  wavy:{minX:-.95,maxX:1.05,minY:-.45,maxY:2.00},
+  'short-spike':{minX:-.95,maxX:1.05,minY:-.05,maxY:2.25},
+  bun:{minX:-.85,maxX:1.05,minY:-.15,maxY:2.25},
+  'half-up':{minX:-.90,maxX:1.15,minY:-.35,maxY:2.25},
+};
 export const HAIR_REFERENCE_FIT=HAIR_PACKED_FIT;
 
+// The previous pass made the eyes materially too small on the editor face. These bounds
+// preserve each source style's aspect ratio while restoring the larger anime-eye scale
+// visible in the variation sheet and original character sample.
 export const EYE_REFERENCE_BOUNDS:Record<EyeStyleId,ReferenceBounds>={
-  bright:{minX:-.140,maxX:.140,minY:-.175,maxY:.175},determined:{minX:-.154,maxX:.154,minY:-.146,maxY:.146},sharp:{minX:-.164,maxX:.164,minY:-.148,maxY:.148},round:{minX:-.148,maxX:.148,minY:-.162,maxY:.162},soft:{minX:-.162,maxX:.162,minY:-.143,maxY:.143},sleepy:{minX:-.180,maxX:.180,minY:-.114,maxY:.114},sparkle:{minX:-.159,maxX:.159,minY:-.170,maxY:.170},closed:{minX:-.151,maxX:.151,minY:-.045,maxY:.045},narrow:{minX:-.183,maxX:.183,minY:-.106,maxY:.106},'side-glance':{minX:-.154,maxX:.154,minY:-.132,maxY:.132},
+  bright:{minX:-.180,maxX:.180,minY:-.205,maxY:.205},
+  determined:{minX:-.185,maxX:.185,minY:-.165,maxY:.165},
+  sharp:{minX:-.195,maxX:.195,minY:-.165,maxY:.165},
+  round:{minX:-.180,maxX:.180,minY:-.190,maxY:.190},
+  soft:{minX:-.190,maxX:.190,minY:-.160,maxY:.160},
+  sleepy:{minX:-.205,maxX:.205,minY:-.125,maxY:.125},
+  sparkle:{minX:-.190,maxX:.190,minY:-.200,maxY:.200},
+  closed:{minX:-.190,maxX:.190,minY:-.055,maxY:.055},
+  narrow:{minX:-.210,maxX:.210,minY:-.115,maxY:.115},
+  'side-glance':{minX:-.190,maxX:.190,minY:-.150,maxY:.150},
 };
 
 const PACK_ALPHABET='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
