@@ -16,8 +16,8 @@ export function boundaryF1(a,b,width,height,tolerance=1){const A=boundary(a,widt
 
 export function foregroundColorMae(sourceRaw,candidateRaw,sourceMask,candidateMask){let total=0,count=0;for(let p=0,i=0;p<sourceMask.length;p++,i+=4){if(!sourceMask[p]||!candidateMask[p])continue;total+=Math.abs(sourceRaw[i]-candidateRaw[i])+Math.abs(sourceRaw[i+1]-candidateRaw[i+1])+Math.abs(sourceRaw[i+2]-candidateRaw[i+2]);count+=3;}return count?total/count:255;}
 
-export function qualityScore({maskIou,boundaryF1:edgeF1,colorMae,triangles},{maxTriangles=400}={}){
-  const trianglePenalty=Math.max(0,triangles-maxTriangles)/Math.max(1,maxTriangles)*.08;return(1-maskIou)*.50+(1-edgeF1)*.35+(colorMae/255)*.15+trianglePenalty;
+export function qualityScore({maskIoU,boundaryF1:edgeF1,colorMae,triangles},{maxTriangles=400}={}){
+  const trianglePenalty=Math.max(0,triangles-maxTriangles)/Math.max(1,maxTriangles)*.08;return(1-maskIoU)*.50+(1-edgeF1)*.35+(colorMae/255)*.15+trianglePenalty;
 }
 
 export function passesQuality(metrics,gate={}){
