@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, MOUTH_PARTS, NOSE_PARTS } from '../src/data/partLibrary';
-import { EYE_REFERENCE_BOUNDS, GENERATED_VARIATION_SOURCE, HAIR_REFERENCE_BOUNDS } from '../src/data/generatedVariationGeometry';
+import { EYE_REFERENCE_BOUNDS, GENERATED_VARIATION_SOURCE, HAIR_REFERENCE_BOUNDS, HAIR_REFERENCE_FIT } from '../src/data/generatedVariationGeometry';
 import { REFERENCE_FACE_FIT_METRICS, REFERENCE_FACE_OUTLINE } from '../src/data/referenceFaceGeometry';
 import { REFERENCE_BODY_FIT_METRICS } from '../src/data/referenceBodyGeometry';
 
 describe('sample-derived polygon geometry',()=>{
-  it('keeps all ten hairstyles aligned to source-sheet face-relative bounds',()=>{
-    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);expect(GENERATED_VARIATION_SOURCE.fitRevision).toBe(3);expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
+  it('keeps all ten hairstyles aligned to high-IoU source-sheet geometry',()=>{
+    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);expect(GENERATED_VARIATION_SOURCE.fitRevision).toBe(4);expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
     for(const [id,hair] of Object.entries(HAIR_PARTS)){
-      expect(hair.tags).toContain('variation-sheet');expect(hair.tags).toContain('face-aligned-v2');expect(hair.triangles.length).toBeGreaterThan(10);
-      const target=HAIR_REFERENCE_BOUNDS[id as keyof typeof HAIR_REFERENCE_BOUNDS];
-      expect(Math.abs(hair.bounds.minX-target.minX)).toBeLessThan(.18);expect(Math.abs(hair.bounds.maxX-target.maxX)).toBeLessThan(.18);expect(Math.abs(hair.bounds.minY-target.minY)).toBeLessThan(.18);expect(Math.abs(hair.bounds.maxY-target.maxY)).toBeLessThan(.18);
+      const key=id as keyof typeof HAIR_REFERENCE_BOUNDS,target=HAIR_REFERENCE_BOUNDS[key],fit=HAIR_REFERENCE_FIT[key];
+      expect(hair.tags).toContain('variation-sheet');expect(hair.tags).toContain('face-aligned-v2');expect(hair.triangles.length).toBeGreaterThanOrEqual(fit.triangles);
+      expect(fit.triangles).toBeGreaterThanOrEqual(130);expect(fit.maskIoU).toBeGreaterThanOrEqual(.974);
+      expect(Math.abs(hair.bounds.minX-target.minX)).toBeLessThan(.05);expect(Math.abs(hair.bounds.maxX-target.maxX)).toBeLessThan(.05);expect(Math.abs(hair.bounds.minY-target.minY)).toBeLessThan(.05);expect(Math.abs(hair.bounds.maxY-target.maxY)).toBeLessThan(.05);
       expect(hair.triangles.some(t=>t.layer==='hair-front')).toBe(true);
     }
     for(const id of ['ponytail','side-tail','twin-tail','bun','half-up'] as const)expect(HAIR_PARTS[id].triangles.some(t=>t.layer==='hair-back')).toBe(true);
