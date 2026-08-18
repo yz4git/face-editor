@@ -1,8 +1,8 @@
 import type { CharacterBundle, CharacterDefinition, ColorRole, CompiledPolygonCharacter, CompiledPolygonLayer, PartDefinition, PartTransform, Vec2 } from './types';
 import { ACCENT_PARTS, BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, HOOD_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS, SHIRT_PARTS, STRAP_PARTS } from '../data/partLibrary';
 import {
-  autoFitFace,autoFitFeature,autoFitHair,autoFitJacket,autoFitOutfitComponent,boundsForPart,composeFit,fitEntry,
-  resolvedLayerZ,transformBounds,type AutoFitReport,type FitBounds,
+  autoFitFace,autoFitFeature,autoFitHair,autoFitJacket,autoFitOutfitComponent,boundsForPart,composeFit,featureTarget,fitEntry,
+  mirrorBoundsX,outfitTarget,resolvedLayerZ,transformBounds,type AutoFitReport,type FitBounds,
 } from './partAutoFit';
 
 type LayerDraft={id:string;zIndex:number;positions:number[];colors:number[];indices:number[]};
@@ -34,25 +34,14 @@ const CANONICAL_FACE:FitBounds={...FACE_PARTS.soft.bounds};
 const CANONICAL_JACKET:FitBounds=boundsForPart(OUTFIT_PARTS.hooded,layer=>layer==='jacket');
 
 function createFitPlan(c:CharacterDefinition):FitPlan{
-  const faceDef=FACE_PARTS[c.faceShape],face=autoFitFace(faceDef,CANONICAL_FACE),faceBounds=transformBounds(faceDef.bounds,face);
-  const hairResult=autoFitHair(c.hairStyle,HAIR_PARTS[c.hairStyle],faceBounds);
-  const jacket=autoFitJacket(OUTFIT_PARTS[c.outfitStyle??'hooded'],CANONICAL_JACKET);
-  const shirt=autoFitOutfitComponent('shirt',c.shirtStyle??'tee',SHIRT_PARTS[c.shirtStyle??'tee'],CANONICAL_JACKET);
-  const hood=autoFitOutfitComponent('hood',c.hoodStyle??'folded',HOOD_PARTS[c.hoodStyle??'folded'],CANONICAL_JACKET);
-  const strap=autoFitOutfitComponent('strap',c.strapStyle??'simple',STRAP_PARTS[c.strapStyle??'simple'],CANONICAL_JACKET);
-  const accent=autoFitOutfitComponent('accent',c.accentStyle??'diamond',ACCENT_PARTS[c.accentStyle??'diamond'],CANONICAL_JACKET);
-  const eyeUser=c.transforms.eyes,browUser=c.transforms.brows;
-  const eyes={} as Record<-1|1,PartTransform>,brows={} as Record<-1|1,PartTransform>;
+  const faceDef=FACE_PARTS[c.faceShape],face=autoFitFace(faceDef,CANONICAL_FACE),faceBounds=transformBounds(faceDef.bounds,face),hairResult=autoFitHair(c.hairStyle,HAIR_PARTS[c.hairStyle],faceBounds);
+  const jacket=autoFitJacket(OUTFIT_PARTS[c.outfitStyle??'hooded'],CANONICAL_JACKET),shirt=autoFitOutfitComponent('shirt',c.shirtStyle??'tee',SHIRT_PARTS[c.shirtStyle??'tee'],CANONICAL_JACKET),hood=autoFitOutfitComponent('hood',c.hoodStyle??'folded',HOOD_PARTS[c.hoodStyle??'folded'],CANONICAL_JACKET),strap=autoFitOutfitComponent('strap',c.strapStyle??'simple',STRAP_PARTS[c.strapStyle??'simple'],CANONICAL_JACKET),accent=autoFitOutfitComponent('accent',c.accentStyle??'diamond',ACCENT_PARTS[c.accentStyle??'diamond'],CANONICAL_JACKET);
+  const eyeUser=c.transforms.eyes,browUser=c.transforms.brows,eyes={} as Record<-1|1,PartTransform>,brows={} as Record<-1|1,PartTransform>;
   for(const side of[-1,1]as const){
     const eyeBase=autoFitFeature(EYE_PARTS[c.eyeStyle],faceBounds,'eye',side),browBase=autoFitFeature(BROW_PARTS[c.browStyle],faceBounds,'brow',side);
-    eyes[side]=composeFit(eyeBase,{...eyeUser,x:eyeUser.x+side*(eyeUser.spacing??0),rotation:eyeUser.rotation*side});
-    brows[side]=composeFit(browBase,{...browUser,x:browUser.x+side*(browUser.spacing??0),rotation:browUser.rotation*side});
+    eyes[side]=composeFit(eyeBase,{...eyeUser,x:eyeUser.x+side*(eyeUser.spacing??0),rotation:eyeUser.rotation*side});brows[side]=composeFit(browBase,{...browUser,x:browUser.x+side*(browUser.spacing??0),rotation:browUser.rotation*side});
   }
-  return{
-    face,faceBounds,hair:hairResult.transform,hairScore:hairResult.score,jacket,shirt,hood,strap,accent,eyes,brows,
-    nose:composeFit(autoFitFeature(NOSE_PARTS[c.noseStyle],faceBounds,'nose'),c.transforms.nose),
-    mouth:composeFit(autoFitFeature(MOUTH_PARTS[c.mouthStyle],faceBounds,'mouth'),c.transforms.mouth),
-  };
+  return{face,faceBounds,hair:hairResult.transform,hairScore:hairResult.score,jacket,shirt,hood,strap,accent,eyes,brows,nose:composeFit(autoFitFeature(NOSE_PARTS[c.noseStyle],faceBounds,'nose'),c.transforms.nose),mouth:composeFit(autoFitFeature(MOUTH_PARTS[c.mouthStyle],faceBounds,'mouth'),c.transforms.mouth)};
 }
 
 function emitSkinUnderlay(d:Drafts,c:CharacterDefinition,face:FitBounds){
@@ -64,37 +53,29 @@ function emitOutfitUnderlay(d:Drafts,c:CharacterDefinition){
   d.tri('jacket-underlay',resolvedLayerZ('jacket-underlay',.5),[[cx-w*.28,top],[cx+w*.28,top],[cx+w*.34,bottom]],jacket);d.tri('jacket-underlay',resolvedLayerZ('jacket-underlay',.5),[[cx-w*.28,top],[cx+w*.34,bottom],[cx-w*.34,bottom]],jacket);
 }
 function emitHairUnderCap(d:Drafts,c:CharacterDefinition,face:FitBounds){
-  const hair=roleColor('hair',c,-10),cx=(face.minX+face.maxX)/2,w=face.maxX-face.minX,h=face.maxY-face.minY,center:Vec2=[cx,face.maxY-h*.05],ring:Vec2[]=[
-    [cx-w*.55,face.maxY-h*.10],[cx-w*.43,face.maxY+h*.13],[cx-w*.22,face.maxY+h*.20],[cx,face.maxY+h*.23],[cx+w*.22,face.maxY+h*.20],[cx+w*.43,face.maxY+h*.13],[cx+w*.55,face.maxY-h*.10],
-  ];
+  const hair=roleColor('hair',c,-10),cx=(face.minX+face.maxX)/2,w=face.maxX-face.minX,h=face.maxY-face.minY,center:Vec2=[cx,face.maxY-h*.05],ring:Vec2[]=[[cx-w*.55,face.maxY-h*.10],[cx-w*.43,face.maxY+h*.13],[cx-w*.22,face.maxY+h*.20],[cx,face.maxY+h*.23],[cx+w*.22,face.maxY+h*.20],[cx+w*.43,face.maxY+h*.13],[cx+w*.55,face.maxY-h*.10]];
   for(let i=0;i<ring.length-1;i++)d.tri('hair-back',resolvedLayerZ('hair-back',14),[center,ring[i],ring[i+1]],hair);
 }
 
 export function getCharacterAutoFitReport(c:CharacterDefinition):AutoFitReport{
-  const plan=createFitPlan(c),entries=[
+  const plan=createFitPlan(c),jacketDef=OUTFIT_PARTS[c.outfitStyle],jacketSource=boundsForPart(jacketDef,layer=>layer==='jacket'),entries=[
     fitEntry(c.faceShape,'face',FACE_PARTS[c.faceShape],CANONICAL_FACE,plan.face),
     fitEntry(c.hairStyle,'hair',HAIR_PARTS[c.hairStyle],plan.faceBounds,plan.hair,plan.hairScore),
-    fitEntry(c.outfitStyle,'jacket',OUTFIT_PARTS[c.outfitStyle],CANONICAL_JACKET,plan.jacket),
-    fitEntry(c.shirtStyle,'shirt',SHIRT_PARTS[c.shirtStyle],CANONICAL_JACKET,plan.shirt),
-    fitEntry(c.hoodStyle,'hood',HOOD_PARTS[c.hoodStyle],CANONICAL_JACKET,plan.hood),
-    fitEntry(c.strapStyle,'strap',STRAP_PARTS[c.strapStyle],CANONICAL_JACKET,plan.strap),
-    fitEntry(c.accentStyle,'accent',ACCENT_PARTS[c.accentStyle],CANONICAL_JACKET,plan.accent),
-    fitEntry(`${c.eyeStyle}:left`,'eye',EYE_PARTS[c.eyeStyle],plan.faceBounds,plan.eyes[-1]),fitEntry(`${c.eyeStyle}:right`,'eye',EYE_PARTS[c.eyeStyle],plan.faceBounds,plan.eyes[1]),
-    fitEntry(`${c.browStyle}:left`,'brow',BROW_PARTS[c.browStyle],plan.faceBounds,plan.brows[-1]),fitEntry(`${c.browStyle}:right`,'brow',BROW_PARTS[c.browStyle],plan.faceBounds,plan.brows[1]),
-    fitEntry(c.noseStyle,'nose',NOSE_PARTS[c.noseStyle],plan.faceBounds,plan.nose),fitEntry(c.mouthStyle,'mouth',MOUTH_PARTS[c.mouthStyle],plan.faceBounds,plan.mouth),
-  ];
-  return{version:2,entries};
+    fitEntry(c.outfitStyle,'jacket',jacketDef,CANONICAL_JACKET,plan.jacket,undefined,jacketSource),
+    fitEntry(c.shirtStyle,'shirt',SHIRT_PARTS[c.shirtStyle],outfitTarget('shirt',c.shirtStyle,CANONICAL_JACKET),plan.shirt),
+    fitEntry(c.hoodStyle,'hood',HOOD_PARTS[c.hoodStyle],outfitTarget('hood',c.hoodStyle,CANONICAL_JACKET),plan.hood),
+    fitEntry(c.strapStyle,'strap',STRAP_PARTS[c.strapStyle],outfitTarget('strap',c.strapStyle,CANONICAL_JACKET),plan.strap),
+    fitEntry(c.accentStyle,'accent',ACCENT_PARTS[c.accentStyle],outfitTarget('accent',c.accentStyle,CANONICAL_JACKET),plan.accent),
+    fitEntry(`${c.eyeStyle}:left`,'eye',EYE_PARTS[c.eyeStyle],featureTarget(plan.faceBounds,'eye',-1),plan.eyes[-1],undefined,mirrorBoundsX(EYE_PARTS[c.eyeStyle].bounds)),fitEntry(`${c.eyeStyle}:right`,'eye',EYE_PARTS[c.eyeStyle],featureTarget(plan.faceBounds,'eye',1),plan.eyes[1]),
+    fitEntry(`${c.browStyle}:left`,'brow',BROW_PARTS[c.browStyle],featureTarget(plan.faceBounds,'brow',-1),plan.brows[-1],undefined,mirrorBoundsX(BROW_PARTS[c.browStyle].bounds)),fitEntry(`${c.browStyle}:right`,'brow',BROW_PARTS[c.browStyle],featureTarget(plan.faceBounds,'brow',1),plan.brows[1]),
+    fitEntry(c.noseStyle,'nose',NOSE_PARTS[c.noseStyle],featureTarget(plan.faceBounds,'nose'),plan.nose),fitEntry(c.mouthStyle,'mouth',MOUTH_PARTS[c.mouthStyle],featureTarget(plan.faceBounds,'mouth'),plan.mouth),
+  ];return{version:2,entries};
 }
 
 export function compileCharacter(c:CharacterDefinition):CompiledPolygonCharacter{
-  const d=new Drafts(),plan=createFitPlan(c);emitSkinUnderlay(d,c,plan.faceBounds);emitPart(d,c,BODY_PARTS[c.baseStyle??'female']);emitOutfitUnderlay(d,c);
-  emitPart(d,c,OUTFIT_PARTS[c.outfitStyle??'hooded'],plan.jacket,false,undefined,layer=>layer==='jacket');
-  emitPart(d,c,SHIRT_PARTS[c.shirtStyle??'tee'],plan.shirt);emitPart(d,c,HOOD_PARTS[c.hoodStyle??'folded'],plan.hood);emitPart(d,c,STRAP_PARTS[c.strapStyle??'simple'],plan.strap);emitPart(d,c,ACCENT_PARTS[c.accentStyle??'diamond'],plan.accent);
-  emitHairUnderCap(d,c,plan.faceBounds);emitPart(d,c,FACE_PARTS[c.faceShape],plan.face);emitPart(d,c,HAIR_PARTS[c.hairStyle],plan.hair);
-  const gazeLayers=c.eyeStyle==='side-glance'?new Set(['iris','pupil','eye-glint']):undefined;for(const side of[-1,1]as const)emitPart(d,c,EYE_PARTS[c.eyeStyle],plan.eyes[side],side<0,side<0?gazeLayers:undefined);
-  for(const side of[-1,1]as const)emitPart(d,c,BROW_PARTS[c.browStyle],plan.brows[side],side<0);
-  emitPart(d,c,NOSE_PARTS[c.noseStyle],plan.nose);emitPart(d,c,MOUTH_PARTS[c.mouthStyle],plan.mouth);
+  const d=new Drafts(),plan=createFitPlan(c);emitSkinUnderlay(d,c,plan.faceBounds);emitPart(d,c,BODY_PARTS[c.baseStyle??'female']);emitOutfitUnderlay(d,c);emitPart(d,c,OUTFIT_PARTS[c.outfitStyle??'hooded'],plan.jacket,false,undefined,layer=>layer==='jacket');
+  emitPart(d,c,SHIRT_PARTS[c.shirtStyle??'tee'],plan.shirt);emitPart(d,c,HOOD_PARTS[c.hoodStyle??'folded'],plan.hood);emitPart(d,c,STRAP_PARTS[c.strapStyle??'simple'],plan.strap);emitPart(d,c,ACCENT_PARTS[c.accentStyle??'diamond'],plan.accent);emitHairUnderCap(d,c,plan.faceBounds);emitPart(d,c,FACE_PARTS[c.faceShape],plan.face);emitPart(d,c,HAIR_PARTS[c.hairStyle],plan.hair);
+  const gazeLayers=c.eyeStyle==='side-glance'?new Set(['iris','pupil','eye-glint']):undefined;for(const side of[-1,1]as const)emitPart(d,c,EYE_PARTS[c.eyeStyle],plan.eyes[side],side<0,side<0?gazeLayers:undefined);for(const side of[-1,1]as const)emitPart(d,c,BROW_PARTS[c.browStyle],plan.brows[side],side<0);emitPart(d,c,NOSE_PARTS[c.noseStyle],plan.nose);emitPart(d,c,MOUTH_PARTS[c.mouthStyle],plan.mouth);
   const layers=d.compile();let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const layer of layers)for(let i=0;i<layer.positions.length;i+=3){const x=layer.positions[i],y=layer.positions[i+1];minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}return{version:1,layers,bounds:{minX,minY,maxX,maxY}};
 }
-
 export function exportCharacterBundle(definition:CharacterDefinition):CharacterBundle{const mesh=compileCharacter(definition);return{format:'face-editor-polygon-character',formatVersion:1,definition:structuredClone(definition),mesh:{version:1,bounds:mesh.bounds,layers:mesh.layers.map(l=>({id:l.id,zIndex:l.zIndex,positions:Array.from(l.positions),colors:Array.from(l.colors),indices:Array.from(l.indices)}))}};}
