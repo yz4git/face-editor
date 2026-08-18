@@ -1,0 +1,17 @@
+{
+  "roi": [600, 515, 800, 850],
+  "seed_rgb": [[40, 42, 42], [24, 25, 23], [32, 34, 34], [49, 50, 48]],
+  "seed_point": [700, 600],
+  "lab_tolerance": 18.0,
+  "component_mode": "all",
+  "min_component_area": 500,
+  "triangulation_mode": "contour",
+  "fill_holes": true,
+  "contour_epsilon": 1.2,
+  "morph_close": 1,
+  "morph_open": 0,
+  "base_rgb": [22, 33, 43],
+  "game_scale": 0.0062,
+  "pixel_origin": [720, 406],
+  "game_origin": [0, 0.62]
+}
