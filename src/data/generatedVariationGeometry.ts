@@ -86,4 +86,4 @@ function contourEye(id:EyeStyleId):GeneratedVariantTriangle<GeneratedEyeRole>[] 
 }
 
 export const GENERATED_HAIR_VARIANTS=Object.fromEntries((Object.keys(HAIR_PACKED_INDEX) as HairStyleId[]).map(id=>[id,decodePackedHair(id)])) as unknown as Record<HairStyleId,readonly GeneratedVariantTriangle<GeneratedHairRole>[]>;
-export const GENERATED_EYE_VARIANTS=Object.fromEntries((Object.keys(EYE_CONTOUR_SHAPES) as EyeStyleId[]).map(id=>[id,contourEye(id)])) as Record<EyeStyleId,readonly GeneratedVariantTriangle<GeneratedEyeRole>[]>;
+export const GENERATED_EYE_VARIANTS=Object.fromEntries((Object.keys(EYE_CONTOUR_SHAPES) as EyeStyleId[]).map(id=>[id,contourEye(id)])) as unknown as Record<EyeStyleId,readonly GeneratedVariantTriangle<GeneratedEyeRole>[]>;
