@@ -7,6 +7,7 @@ import { classifyShapes, hexToRgb, medianColor, rgbHex } from './color.mjs';
 import { parseVTracerSvg, shapesToSvg } from './svg.mjs';
 import { alphaMask, boundaryF1, foregroundColorMae, maskIoU, passesQuality, qualityScore, semanticSourceMask } from './metrics.mjs';
 import { emitTypeScript, triangulateSemanticShapes } from './geometry.mjs';
+import { validateManifest } from './manifest.mjs';
 
 const vtracer=vtracerPackage?.default??vtracerPackage;
 
@@ -61,7 +62,7 @@ async function runPool(items,concurrency,worker){const results=new Array(items.l
 
 const safeName=value=>String(value).replace(/[^a-z0-9_.-]+/gi,'-').replace(/^-+|-+$/g,'')||'part';
 export async function runManifest(manifestPath,{failOnQuality=true,profiles:profileOverride=null}={}){
-  const absoluteManifest=path.resolve(manifestPath),root=path.dirname(absoluteManifest),manifest=JSON.parse(await fs.readFile(absoluteManifest,'utf8')),sourcePath=path.resolve(root,manifest.source),outputRoot=path.resolve(root,manifest.output??'vectorizer-output'),dirs={root:outputRoot,audit:path.join(outputRoot,'audit')};await fs.mkdir(dirs.audit,{recursive:true});
+  const absoluteManifest=path.resolve(manifestPath),root=path.dirname(absoluteManifest),manifest=validateManifest(JSON.parse(await fs.readFile(absoluteManifest,'utf8'))),sourcePath=path.resolve(root,manifest.source),outputRoot=path.resolve(root,manifest.output??'vectorizer-output'),dirs={root:outputRoot,audit:path.join(outputRoot,'audit')};await fs.mkdir(dirs.audit,{recursive:true});
   const imageMeta=await sharp(sourcePath).metadata();if(!imageMeta.width||!imageMeta.height)throw new Error('Source image dimensions unavailable');const profiles=profileOverride??manifest.profiles??DEFAULT_PROFILES,started=performance.now(),processed=await runPool(manifest.items,manifest.concurrency??4,item=>processItem(sourcePath,imageMeta,manifest,item,profiles,dirs)),items=processed.map(r=>r.item),failed=items.filter(v=>!v.passed),geometry=Object.fromEntries(items.map(item=>[item.id,{kind:item.kind,label:item.label,targetBounds:item.geometry.targetBounds,triangles:item.geometry.triangles}])),summary={schemaVersion:2,source:path.relative(root,sourcePath),generatedAt:new Date().toISOString(),processingMs:performance.now()-started,profileCount:profiles.length,itemCount:items.length,passed:items.length-failed.length,failed:failed.map(v=>v.id),items:items.map(({geometry:_,...item})=>item)};
   await fs.writeFile(path.join(outputRoot,'geometry.json'),JSON.stringify(geometry,null,2));await fs.writeFile(path.join(outputRoot,'geometry.generated.ts'),emitTypeScript(geometry,{exportName:manifest.exportName??'AUTO_VECTORIZED_PARTS'}));await fs.writeFile(path.join(outputRoot,'metrics.json'),JSON.stringify(summary,null,2));await makeContactSheet(processed.map(r=>r.audit),path.join(dirs.audit,'contact-sheet.png'));
   if(failOnQuality&&failed.length)throw new Error(`Quality gate failed: ${failed.map(v=>`${v.id} (IoU ${v.metrics.maskIoU.toFixed(3)}, edge ${v.metrics.boundaryF1.toFixed(3)}, MAE ${v.metrics.colorMae.toFixed(1)})`).join(', ')}`);return{summary,geometry,outputRoot};
