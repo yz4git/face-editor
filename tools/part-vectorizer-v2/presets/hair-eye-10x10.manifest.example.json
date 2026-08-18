@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 2,
+  "notes": "Example for a 1600x1200 authoring sheet with a 5x2 hair region above a 5x2 eye region. Measure x/y/width/height once for a new sheet layout, then reuse the manifest for every sheet generated with that layout.",
+  "source": "./hair-eye-sheet.png",
+  "output": "./vectorizer-output",
+  "exportName": "AUTO_HAIR_EYE_VARIANTS",
+  "concurrency": 4,
+  "kindGrids": {
+    "hair": {"columns": 5, "rows": 2, "x": 80, "y": 115, "width": 1440, "height": 480, "gapX": 0, "gapY": 0},
+    "eye": {"columns": 5, "rows": 2, "x": 80, "y": 705, "width": 1440, "height": 320, "gapX": 0, "gapY": 0}
+  },
+  "kindInsets": {
+    "hair": {"left": 0.04, "right": 0.04, "top": 0.04, "bottom": 0.04},
+    "eye": {"left": 0.07, "right": 0.07, "top": 0.09, "bottom": 0.09}
+  },
+  "targetBoundsByKind": {
+    "hair": {"minX": -1.25, "maxX": 1.25, "minY": -0.75, "maxY": 2.25, "flipY": true},
+    "eye": {"minX": -0.19, "maxX": 0.19, "minY": -0.20, "maxY": 0.20, "flipY": true}
+  },
+  "kindRoleBaseColors": {
+    "hair": {"hair": "#583c28", "hairTie": "#d34d56"},
+    "eye": {"outline": "#281b18", "white": "#fffaf0", "eyes": "#80552f", "pupil": "#211714", "highlight": "#ffffff"}
+  },
+  "quality": {
+    "minMaskIoU": 0.90,
+    "minBoundaryF1": 0.82,
+    "maxColorMae": 42,
+    "maxTriangles": 600
+  },
+  "items": [
+    {"id": "ponytail", "label": "High ponytail", "kind": "hair", "cell": 0},
+    {"id": "bob", "label": "Short bob", "kind": "hair", "cell": 1},
+    {"id": "side-tail", "label": "Side ponytail", "kind": "hair", "cell": 2},
+    {"id": "twin-tail", "label": "Twin tails", "kind": "hair", "cell": 3},
+    {"id": "braid", "label": "Side braid", "kind": "hair", "cell": 4},
+    {"id": "long", "label": "Long straight", "kind": "hair", "cell": 5},
+    {"id": "wavy", "label": "Medium wavy", "kind": "hair", "cell": 6},
+    {"id": "short-spike", "label": "Short spiky", "kind": "hair", "cell": 7},
+    {"id": "bun", "label": "High bun", "kind": "hair", "cell": 8},
+    {"id": "half-up", "label": "Half up", "kind": "hair", "cell": 9},
+    {"id": "bright", "label": "Bright", "kind": "eye", "cell": 0},
+    {"id": "determined", "label": "Determined", "kind": "eye", "cell": 1},
+    {"id": "sharp", "label": "Sharp", "kind": "eye", "cell": 2},
+    {"id": "round", "label": "Cheerful round", "kind": "eye", "cell": 3},
+    {"id": "soft", "label": "Gentle", "kind": "eye", "cell": 4},
+    {"id": "sleepy", "label": "Sleepy", "kind": "eye", "cell": 5},
+    {"id": "sparkle", "label": "Sparkling", "kind": "eye", "cell": 6},
+    {"id": "closed", "label": "Closed smile", "kind": "eye", "cell": 7},
+    {"id": "narrow", "label": "Cool narrow", "kind": "eye", "cell": 8},
+    {"id": "side-glance", "label": "Side glance", "kind": "eye", "cell": 9}
+  ]
+}
