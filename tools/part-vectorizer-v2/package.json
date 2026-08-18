@@ -1,0 +1,19 @@
+{
+  "name": "@face-editor/part-vectorizer-v2",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "vectorize": "node ./cli.mjs",
+    "test": "node --test ./test/*.test.mjs",
+    "fixture": "node ./test/make-fixture.mjs"
+  },
+  "dependencies": {
+    "@visioncortex/vtracer": "1.0.0-alpha.3",
+    "earcut": "3.2.3",
+    "sharp": "0.35.3"
+  }
+}
