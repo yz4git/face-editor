@@ -28,7 +28,6 @@ function cellRect(manifest,item,imageWidth,imageHeight){
 }
 
 function roleBaseColors(manifest,item){const roles={...manifest.roleBaseColors,...manifest.kindRoleBaseColors?.[item.kind],...item.roleBaseColors};return Object.fromEntries(Object.entries(roles).map(([key,value])=>[key,typeof value==='string'?hexToRgb(value):value]));}
-
 async function rawRgba(buffer){const{data,info}=await sharp(buffer).ensureAlpha().raw().toBuffer({resolveWithObject:true});return{raw:data,width:info.width,height:info.height};}
 
 async function traceCandidate(crop,source,profile,item,manifest){
@@ -39,10 +38,7 @@ async function traceCandidate(crop,source,profile,item,manifest){
 }
 
 async function auditImage(id,crop,candidate,width,height){
-  const labelHeight=32,panel=await sharp({create:{width:width*2,height:height+labelHeight,channels:4,background:'#f4f4f4'}}).composite([
-    {input:crop,left:0,top:labelHeight},{input:Buffer.from(candidate.svg),left:width,top:labelHeight},
-    {input:Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width*2}" height="${labelHeight}"><rect width="100%" height="100%" fill="#161b22"/><text x="8" y="21" font-size="14" font-family="sans-serif" fill="white">${escapeXml(id)} · source</text><text x="${width+8}" y="21" font-size="14" font-family="sans-serif" fill="white">vector · ${escapeXml(candidate.profile)} · IoU ${candidate.metrics.maskIoU.toFixed(3)} · edge ${candidate.metrics.boundaryF1.toFixed(3)}</text></svg>`),left:0,top:0}
-  ]).png().toBuffer();return panel;
+  const labelHeight=32,panel=await sharp({create:{width:width*2,height:height+labelHeight,channels:4,background:'#f4f4f4'}}).composite([{input:crop,left:0,top:labelHeight},{input:Buffer.from(candidate.svg),left:width,top:labelHeight},{input:Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width*2}" height="${labelHeight}"><rect width="100%" height="100%" fill="#161b22"/><text x="8" y="21" font-size="14" font-family="sans-serif" fill="white">${escapeXml(id)} · source</text><text x="${width+8}" y="21" font-size="14" font-family="sans-serif" fill="white">vector · ${escapeXml(candidate.profile)} · IoU ${candidate.metrics.maskIoU.toFixed(3)} · edge ${candidate.metrics.boundaryF1.toFixed(3)}</text></svg>`),left:0,top:0}]).png().toBuffer();return panel;
 }
 const escapeXml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 
@@ -52,17 +48,16 @@ async function makeContactSheet(audits,outputPath){
 }
 
 async function processItem(sourcePath,imageMeta,manifest,item,profiles,dirs){
-  const rect=cellRect(manifest,item,imageMeta.width,imageMeta.height),crop=await sharp(sourcePath).extract(rect).png().toBuffer(),source=await rawRgba(crop),candidates=[],errors=[];
-  for(const profile of profiles){try{candidates.push(await traceCandidate(crop,source,profile,item,manifest));}catch(error){errors.push(String(error?.message??error));}}
+  const rect=cellRect(manifest,item,imageMeta.width,imageMeta.height),crop=await sharp(sourcePath).extract(rect).png().toBuffer(),source=await rawRgba(crop),candidates=[],errors=[];for(const profile of profiles){try{candidates.push(await traceCandidate(crop,source,profile,item,manifest));}catch(error){errors.push(String(error?.message??error));}}
   if(!candidates.length)throw new Error(`${item.id}: all vectorization profiles failed: ${errors.join(' | ')}`);candidates.sort((a,b)=>a.metrics.score-b.metrics.score);const best=candidates[0],gate={...manifest.quality,...item.quality},passed=passesQuality(best.metrics,gate),audit=await auditImage(item.id,crop,best,source.width,source.height),auditPath=path.join(dirs.audit,`${safeName(item.id)}.png`);await fs.writeFile(auditPath,audit);
   return{item:{id:item.id,kind:item.kind,label:item.label??item.id,sourceRect:rect,profile:best.profile,background:best.background,passed,metrics:best.metrics,attempts:candidates.map(c=>({profile:c.profile,metrics:c.metrics})),errors,geometry:best.geometry},audit:{id:item.id,buffer:audit}};
 }
 
 async function runPool(items,concurrency,worker){const results=new Array(items.length);let cursor=0;async function run(){while(true){const index=cursor++;if(index>=items.length)return;results[index]=await worker(items[index],index);}}await Promise.all(Array.from({length:Math.min(concurrency,items.length)},run));return results;}
-
 const safeName=value=>String(value).replace(/[^a-z0-9_.-]+/gi,'-').replace(/^-+|-+$/g,'')||'part';
-export async function runManifest(manifestPath,{failOnQuality=true,profiles:profileOverride=null}={}){
-  const absoluteManifest=path.resolve(manifestPath),root=path.dirname(absoluteManifest),manifest=validateManifest(JSON.parse(await fs.readFile(absoluteManifest,'utf8'))),sourcePath=path.resolve(root,manifest.source),outputRoot=path.resolve(root,manifest.output??'vectorizer-output'),dirs={root:outputRoot,audit:path.join(outputRoot,'audit')};await fs.mkdir(dirs.audit,{recursive:true});
+
+export async function runManifest(manifestPath,{failOnQuality=true,profiles:profileOverride=null,outputOverride=null}={}){
+  const absoluteManifest=path.resolve(manifestPath),root=path.dirname(absoluteManifest),manifest=validateManifest(JSON.parse(await fs.readFile(absoluteManifest,'utf8'))),sourcePath=path.resolve(root,manifest.source),outputRoot=path.resolve(root,outputOverride??manifest.output??'vectorizer-output'),dirs={root:outputRoot,audit:path.join(outputRoot,'audit')};await fs.mkdir(dirs.audit,{recursive:true});
   const imageMeta=await sharp(sourcePath).metadata();if(!imageMeta.width||!imageMeta.height)throw new Error('Source image dimensions unavailable');const profiles=profileOverride??manifest.profiles??DEFAULT_PROFILES,started=performance.now(),processed=await runPool(manifest.items,manifest.concurrency??4,item=>processItem(sourcePath,imageMeta,manifest,item,profiles,dirs)),items=processed.map(r=>r.item),failed=items.filter(v=>!v.passed),geometry=Object.fromEntries(items.map(item=>[item.id,{kind:item.kind,label:item.label,targetBounds:item.geometry.targetBounds,triangles:item.geometry.triangles}])),summary={schemaVersion:2,source:path.relative(root,sourcePath),generatedAt:new Date().toISOString(),processingMs:performance.now()-started,profileCount:profiles.length,itemCount:items.length,passed:items.length-failed.length,failed:failed.map(v=>v.id),items:items.map(({geometry:_,...item})=>item)};
   await fs.writeFile(path.join(outputRoot,'geometry.json'),JSON.stringify(geometry,null,2));await fs.writeFile(path.join(outputRoot,'geometry.generated.ts'),emitTypeScript(geometry,{exportName:manifest.exportName??'AUTO_VECTORIZED_PARTS'}));await fs.writeFile(path.join(outputRoot,'metrics.json'),JSON.stringify(summary,null,2));await makeContactSheet(processed.map(r=>r.audit),path.join(dirs.audit,'contact-sheet.png'));
   if(failOnQuality&&failed.length)throw new Error(`Quality gate failed: ${failed.map(v=>`${v.id} (IoU ${v.metrics.maskIoU.toFixed(3)}, edge ${v.metrics.boundaryF1.toFixed(3)}, MAE ${v.metrics.colorMae.toFixed(1)})`).join(', ')}`);return{summary,geometry,outputRoot};
