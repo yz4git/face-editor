@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { compileCharacter, getCharacterAutoFitReport } from '../core/compileCharacter';
 import type { CharacterDefinition, CompiledPolygonCharacter } from '../core/types';
 import type { AutoFitReport } from '../core/partAutoFit';
+import type { AutoFitSweepResult } from '../core/autoFitSweep';
 
 export type RendererMode='webgl'|'canvas2d';
-type AuditWindow=Window&{__FACE_EDITOR_RENDERER_MODE__?:RendererMode;__FACE_EDITOR_AUTOFIT_REPORT__?:AutoFitReport};
+type AuditWindow=Window&{__FACE_EDITOR_RENDERER_MODE__?:RendererMode;__FACE_EDITOR_AUTOFIT_REPORT__?:AutoFitReport;__FACE_EDITOR_AUTOFIT_SWEEP__?:AutoFitSweepResult};
 
 export class CharacterRenderer{
   private scene=new THREE.Scene();
@@ -22,8 +23,14 @@ export class CharacterRenderer{
     if(!forceCanvas)this.tryWebGL();if(!this.renderer)this.enableCanvasFallback();
     this.camera.position.set(0,0,10);this.camera.lookAt(0,0,0);this.scene.add(this.root);
     this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(this.host);this.resize();this.publishMode();
+    if(params.get('visualAudit')==='1')void this.startAuditSweep();
   }
   getMode():RendererMode{return this.mode;}
+  private async startAuditSweep(){
+    this.host.dataset.autofitSweep='running';
+    try{const{evaluatePairwiseAutoFitSweep}=await import('../core/autoFitSweep');const result=evaluatePairwiseAutoFitSweep();(window as AuditWindow).__FACE_EDITOR_AUTOFIT_SWEEP__=result;this.host.dataset.autofitSweep='complete';this.host.dataset.autofitSweepCoverage=result.pairCoverage.ratio.toFixed(6);this.host.dataset.autofitSweepCases=String(result.caseCount);this.host.dataset.autofitSweepErrors=String(result.errorCount);}
+    catch(error){console.error('Auto-fit sweep failed',error);this.host.dataset.autofitSweep='failed';}
+  }
   private tryWebGL(){
     try{
       const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x000000,0);renderer.domElement.className='character-canvas';
