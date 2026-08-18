@@ -1,11 +1,15 @@
-import type { BrowStyleId, CharacterBaseId, CharacterDefinition, EyeStyleId, FaceShapeId, HairStyleId, MouthStyleId, NoseStyleId, OutfitStyleId } from '../core/types';
-import { BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS } from './partLibrary';
+import type { AccentStyleId, BrowStyleId, CharacterBaseId, CharacterDefinition, EyeStyleId, FaceShapeId, HairStyleId, HoodStyleId, MouthStyleId, NoseStyleId, OutfitStyleId, ShirtStyleId, StrapStyleId } from '../core/types';
+import { ACCENT_PARTS, BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, HOOD_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS, SHIRT_PARTS, STRAP_PARTS } from './partLibrary';
 
 export interface Option<T extends string> { id:T; label:string }
 const options=<T extends string>(record:Record<T,{id:T;label:string}>):Option<T>[]=>Object.values(record).map(value=>{const {id,label}=value as {id:T;label:string};return{id,label};});
 
 export const BASE_OPTIONS=options<CharacterBaseId>(BODY_PARTS);
 export const OUTFIT_OPTIONS=options<OutfitStyleId>(OUTFIT_PARTS);
+export const HOOD_OPTIONS=options<HoodStyleId>(HOOD_PARTS);
+export const SHIRT_OPTIONS=options<ShirtStyleId>(SHIRT_PARTS);
+export const STRAP_OPTIONS=options<StrapStyleId>(STRAP_PARTS);
+export const ACCENT_OPTIONS=options<AccentStyleId>(ACCENT_PARTS);
 export const HAIR_OPTIONS=options<HairStyleId>(HAIR_PARTS);
 export const FACE_OPTIONS=options<FaceShapeId>(FACE_PARTS);
 export const EYE_OPTIONS=options<EyeStyleId>(EYE_PARTS);
@@ -20,7 +24,7 @@ export const JACKET_COLORS=['#0b5cad','#2453a4','#166f76','#7a3d8e','#a74343','#
 
 export const DEFAULT_CHARACTER:CharacterDefinition={
   version:1,
-  baseStyle:'female',outfitStyle:'hooded',hairStyle:'ponytail',faceShape:'soft',eyeStyle:'bright',browStyle:'soft',noseStyle:'diamond',mouthStyle:'smile-open',
+  baseStyle:'female',outfitStyle:'hooded',hoodStyle:'folded',shirtStyle:'tee',strapStyle:'simple',accentStyle:'diamond',hairStyle:'ponytail',faceShape:'soft',eyeStyle:'bright',browStyle:'soft',noseStyle:'diamond',mouthStyle:'smile-open',
   colors:{skin:'#ffd0aa',hair:'#39281d',eyes:'#5a351b',brows:'#39281d',jacket:'#0b5cad',accent:'#f1bd42'},
   transforms:{
     eyes:{x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0},
@@ -37,5 +41,9 @@ export function normalizeCharacter(input:Partial<CharacterDefinition>|null|undef
   for(const key of ['eyes','brows','nose','mouth'] as const){out.transforms[key]={...base.transforms[key],...(input.transforms?.[key]??{})};}
   if(!out.baseStyle)out.baseStyle='female';
   if(!out.outfitStyle)out.outfitStyle='hooded';
+  if(!out.hoodStyle)out.hoodStyle='folded';
+  if(!out.shirtStyle)out.shirtStyle='tee';
+  if(!out.strapStyle)out.strapStyle='simple';
+  if(!out.accentStyle)out.accentStyle='diamond';
   return out;
 }

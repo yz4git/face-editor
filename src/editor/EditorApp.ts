@@ -3,9 +3,9 @@ import { renderPartThumbnail } from '../render/PartThumbnailRenderer';
 import { exportCharacterBundle } from '../core/compileCharacter';
 import type { CharacterDefinition, PartDefinition, PartTransform } from '../core/types';
 import {
-  BASE_OPTIONS,BROW_OPTIONS,DEFAULT_CHARACTER,EYE_COLORS,EYE_OPTIONS,FACE_OPTIONS,HAIR_COLORS,HAIR_OPTIONS,JACKET_COLORS,MOUTH_OPTIONS,NOSE_OPTIONS,OUTFIT_OPTIONS,SKIN_COLORS,
+  ACCENT_OPTIONS,BASE_OPTIONS,BROW_OPTIONS,DEFAULT_CHARACTER,EYE_COLORS,EYE_OPTIONS,FACE_OPTIONS,HAIR_COLORS,HAIR_OPTIONS,HOOD_OPTIONS,JACKET_COLORS,MOUTH_OPTIONS,NOSE_OPTIONS,OUTFIT_OPTIONS,SHIRT_OPTIONS,SKIN_COLORS,STRAP_OPTIONS,
 } from '../data/parts';
-import { BROW_PARTS,EYE_PARTS,FACE_PARTS,HAIR_PARTS,MOUTH_PARTS,NOSE_PARTS,OUTFIT_PARTS } from '../data/partLibrary';
+import { ACCENT_PARTS,BROW_PARTS,EYE_PARTS,FACE_PARTS,HAIR_PARTS,HOOD_PARTS,MOUTH_PARTS,NOSE_PARTS,OUTFIT_PARTS,SHIRT_PARTS,STRAP_PARTS } from '../data/partLibrary';
 
 const clone=<T>(v:T):T=>structuredClone(v);
 const pick=<T>(items:T[]):T=>items[Math.floor(Math.random()*items.length)];
@@ -51,7 +51,13 @@ export class EditorApp{
           </nav>
           <section class="left-panel panel" id="left-section">
             <h2>BASE</h2><div id="base-options" class="base-options"></div>
-            <div id="outfit-section"><h2>OUTFIT</h2><div id="outfit-options" class="option-grid"></div></div>
+            <div id="outfit-section">
+              <h2>JACKET / SILHOUETTE</h2><div id="outfit-options" class="option-grid"></div>
+              <h2>COLLAR / HOOD</h2><div id="hood-options" class="option-grid"></div>
+              <h2>INNER SHIRT</h2><div id="shirt-options" class="option-grid"></div>
+              <h2>STRAP / HARNESS</h2><div id="strap-options" class="option-grid"></div>
+              <h2>ACCENT</h2><div id="accent-options" class="option-grid"></div>
+            </div>
             <div id="hair-section"><h2>HAIRSTYLE</h2><div id="hair-options" class="option-grid hair-grid"></div></div>
             <h2>HAIR COLOR</h2><div id="hair-colors" class="swatch-grid"></div>
             <h2>BASE COLORS</h2><div class="color-group"><label>SKIN</label><div id="skin-colors" class="swatch-grid compact"></div></div>
@@ -72,7 +78,7 @@ export class EditorApp{
           </section>
         </main>
         <footer class="bottombar">
-          <div><strong>Generated-source triangle character data</strong><small>All selectable parts are runtime polygons extracted from the generated source sheets.</small></div>
+          <div><strong>Generated-source triangle character data</strong><small>Jacket, hood, shirt, harness and accent can now be mixed independently.</small></div>
           <div class="save-slots"><span>SAVE SLOT</span>${[1,2,3,4].map(n=>`<button data-slot="${n}" class="${n===1?'selected':''}">${n}</button>`).join('')}</div>
         </footer>
       </div>`;
@@ -99,9 +105,9 @@ export class EditorApp{
 
   private pushHistory(){this.history.push(clone(this.state));if(this.history.length>80)this.history.shift();this.redoHistory=[];}
   private commit(){this.renderUI();this.renderer.setCharacter(this.state);}
-  private applySelection(kind:string,id:string){if(kind==='outfit')this.state.outfitStyle=id as CharacterDefinition['outfitStyle'];else if(kind==='hair')this.state.hairStyle=id as CharacterDefinition['hairStyle'];else if(kind==='face')this.state.faceShape=id as CharacterDefinition['faceShape'];else if(kind==='eye')this.state.eyeStyle=id as CharacterDefinition['eyeStyle'];else if(kind==='brow')this.state.browStyle=id as CharacterDefinition['browStyle'];else if(kind==='nose')this.state.noseStyle=id as CharacterDefinition['noseStyle'];else if(kind==='mouth')this.state.mouthStyle=id as CharacterDefinition['mouthStyle'];}
+  private applySelection(kind:string,id:string){if(kind==='outfit')this.state.outfitStyle=id as CharacterDefinition['outfitStyle'];else if(kind==='hood')this.state.hoodStyle=id as CharacterDefinition['hoodStyle'];else if(kind==='shirt')this.state.shirtStyle=id as CharacterDefinition['shirtStyle'];else if(kind==='strap')this.state.strapStyle=id as CharacterDefinition['strapStyle'];else if(kind==='accent')this.state.accentStyle=id as CharacterDefinition['accentStyle'];else if(kind==='hair')this.state.hairStyle=id as CharacterDefinition['hairStyle'];else if(kind==='face')this.state.faceShape=id as CharacterDefinition['faceShape'];else if(kind==='eye')this.state.eyeStyle=id as CharacterDefinition['eyeStyle'];else if(kind==='brow')this.state.browStyle=id as CharacterDefinition['browStyle'];else if(kind==='nose')this.state.noseStyle=id as CharacterDefinition['noseStyle'];else if(kind==='mouth')this.state.mouthStyle=id as CharacterDefinition['mouthStyle'];}
   private applyColor(kind:string,color:string){if(kind==='hair'){this.state.colors.hair=color;this.state.colors.brows=color;}else if(kind==='eyes')this.state.colors.eyes=color;else if(kind==='skin')this.state.colors.skin=color;else if(kind==='jacket')this.state.colors.jacket=color;}
-  private randomize(){this.pushHistory();this.state.baseStyle=pick(BASE_OPTIONS).id;this.state.outfitStyle=pick(OUTFIT_OPTIONS).id;this.state.hairStyle=pick(HAIR_OPTIONS).id;this.state.faceShape=pick(FACE_OPTIONS).id;this.state.eyeStyle=pick(EYE_OPTIONS).id;this.state.browStyle=pick(BROW_OPTIONS).id;this.state.noseStyle=pick(NOSE_OPTIONS).id;this.state.mouthStyle=pick(MOUTH_OPTIONS).id;this.state.colors.hair=pick(HAIR_COLORS);this.state.colors.brows=this.state.colors.hair;this.state.colors.eyes=pick(EYE_COLORS);this.state.colors.skin=pick(SKIN_COLORS);this.state.colors.jacket=pick(JACKET_COLORS);this.commit();}
+  private randomize(){this.pushHistory();this.state.baseStyle=pick(BASE_OPTIONS).id;this.state.outfitStyle=pick(OUTFIT_OPTIONS).id;this.state.hoodStyle=pick(HOOD_OPTIONS).id;this.state.shirtStyle=pick(SHIRT_OPTIONS).id;this.state.strapStyle=pick(STRAP_OPTIONS).id;this.state.accentStyle=pick(ACCENT_OPTIONS).id;this.state.hairStyle=pick(HAIR_OPTIONS).id;this.state.faceShape=pick(FACE_OPTIONS).id;this.state.eyeStyle=pick(EYE_OPTIONS).id;this.state.browStyle=pick(BROW_OPTIONS).id;this.state.noseStyle=pick(NOSE_OPTIONS).id;this.state.mouthStyle=pick(MOUTH_OPTIONS).id;this.state.colors.hair=pick(HAIR_COLORS);this.state.colors.brows=this.state.colors.hair;this.state.colors.eyes=pick(EYE_COLORS);this.state.colors.skin=pick(SKIN_COLORS);this.state.colors.jacket=pick(JACKET_COLORS);this.commit();}
   private undo(){const prev=this.history.pop();if(prev){this.redoHistory.push(clone(this.state));this.state=prev;this.commit();}}
   private redo(){const next=this.redoHistory.pop();if(next){this.history.push(clone(this.state));this.state=next;this.commit();}}
   private resetTransform(){this.pushHistory();this.state.transforms[this.activeAdjust]={x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0};this.commit();}
@@ -110,13 +116,13 @@ export class EditorApp{
   private focusSection(name:string,button:HTMLElement){this.root.querySelectorAll('.category-rail button').forEach(x=>x.classList.remove('active'));button.classList.add('active');const adjustMap:Record<string,TransformKey|undefined>={eyes:'eyes',eyebrows:'brows',nose:'nose',mouth:'mouth'};if(adjustMap[name])this.activeAdjust=adjustMap[name]!;const id=name==='outline'?'outline-section':name==='color'?'left-section':`${name}-section`;this.root.querySelector(`#${id}`)?.scrollIntoView({behavior:'smooth',block:'nearest'});this.renderAdjustControls();}
 
   private renderUI(){
-    this.setHTML('#base-options',bases(this.state.baseStyle));this.setHTML('#outfit-options',buttons('outfit',OUTFIT_OPTIONS,this.state.outfitStyle));this.setHTML('#hair-options',buttons('hair',HAIR_OPTIONS,this.state.hairStyle));this.setHTML('#hair-colors',swatches('hair',HAIR_COLORS,this.state.colors.hair));this.setHTML('#skin-colors',swatches('skin',SKIN_COLORS,this.state.colors.skin));this.setHTML('#jacket-colors',swatches('jacket',JACKET_COLORS,this.state.colors.jacket));
+    this.setHTML('#base-options',bases(this.state.baseStyle));this.setHTML('#outfit-options',buttons('outfit',OUTFIT_OPTIONS,this.state.outfitStyle));this.setHTML('#hood-options',buttons('hood',HOOD_OPTIONS,this.state.hoodStyle));this.setHTML('#shirt-options',buttons('shirt',SHIRT_OPTIONS,this.state.shirtStyle));this.setHTML('#strap-options',buttons('strap',STRAP_OPTIONS,this.state.strapStyle));this.setHTML('#accent-options',buttons('accent',ACCENT_OPTIONS,this.state.accentStyle));this.setHTML('#hair-options',buttons('hair',HAIR_OPTIONS,this.state.hairStyle));this.setHTML('#hair-colors',swatches('hair',HAIR_COLORS,this.state.colors.hair));this.setHTML('#skin-colors',swatches('skin',SKIN_COLORS,this.state.colors.skin));this.setHTML('#jacket-colors',swatches('jacket',JACKET_COLORS,this.state.colors.jacket));
     this.setHTML('#face-options',buttons('face',FACE_OPTIONS,this.state.faceShape));this.setHTML('#eye-options',buttons('eye',EYE_OPTIONS,this.state.eyeStyle));this.setHTML('#eye-colors',swatches('eyes',EYE_COLORS,this.state.colors.eyes));this.setHTML('#brow-options',buttons('brow',BROW_OPTIONS,this.state.browStyle));this.setHTML('#nose-options',buttons('nose',NOSE_OPTIONS,this.state.noseStyle));this.setHTML('#mouth-options',buttons('mouth',MOUTH_OPTIONS,this.state.mouthStyle));
     this.root.querySelectorAll<HTMLButtonElement>('[data-slot]').forEach(b=>b.classList.toggle('selected',Number(b.dataset.slot)===this.activeSlot));
     this.renderPartThumbnails();this.renderAdjustControls();
   }
   private renderPartThumbnails(){
-    const defs:Record<string,Record<string,PartDefinition>>={outfit:OUTFIT_PARTS,hair:HAIR_PARTS,face:FACE_PARTS,eye:EYE_PARTS,brow:BROW_PARTS,nose:NOSE_PARTS,mouth:MOUTH_PARTS};
+    const defs:Record<string,Record<string,PartDefinition>>={outfit:OUTFIT_PARTS,hood:HOOD_PARTS,shirt:SHIRT_PARTS,strap:STRAP_PARTS,accent:ACCENT_PARTS,hair:HAIR_PARTS,face:FACE_PARTS,eye:EYE_PARTS,brow:BROW_PARTS,nose:NOSE_PARTS,mouth:MOUTH_PARTS};
     this.root.querySelectorAll<HTMLCanvasElement>('canvas[data-thumb-kind]').forEach(canvas=>{const kind=canvas.dataset.thumbKind??'',id=canvas.dataset.thumbId??'',def=defs[kind]?.[id];if(def)renderPartThumbnail(canvas,def,this.state);});
   }
   private renderAdjustControls(){
