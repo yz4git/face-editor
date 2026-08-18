@@ -2,9 +2,9 @@ export type Vec2 = readonly [number, number];
 export type Triangle = readonly [Vec2, Vec2, Vec2];
 
 export type CharacterBaseId = 'female' | 'male';
-export type HairStyleId = 'ponytail' | 'short-spike' | 'bob' | 'long' | 'side-tail' | 'twin-tail';
+export type HairStyleId = 'ponytail' | 'bob' | 'side-tail' | 'twin-tail' | 'braid' | 'long' | 'wavy' | 'short-spike' | 'bun' | 'half-up';
 export type FaceShapeId = 'soft' | 'oval' | 'angular' | 'round';
-export type EyeStyleId = 'bright' | 'soft' | 'sharp' | 'round' | 'narrow';
+export type EyeStyleId = 'bright' | 'determined' | 'sharp' | 'round' | 'soft' | 'sleepy' | 'sparkle' | 'closed' | 'narrow' | 'side-glance';
 export type BrowStyleId = 'soft' | 'straight' | 'angled' | 'thin' | 'bold';
 export type NoseStyleId = 'diamond' | 'small' | 'line' | 'soft';
 export type MouthStyleId = 'smile-open' | 'smile' | 'neutral' | 'soft-smile' | 'o';

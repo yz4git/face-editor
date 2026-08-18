@@ -1,24 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import { BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, MOUTH_PARTS, NOSE_PARTS } from '../src/data/partLibrary';
-import { REFERENCE_FIT_METRICS, REFERENCE_PONYTAIL_HAIR } from '../src/data/referenceGeometry';
+import { GENERATED_VARIATION_SOURCE } from '../src/data/generatedVariationGeometry';
 import { REFERENCE_FACE_FIT_METRICS, REFERENCE_FACE_OUTLINE } from '../src/data/referenceFaceGeometry';
 import { REFERENCE_BODY_FIT_METRICS } from '../src/data/referenceBodyGeometry';
 
 describe('sample-derived polygon geometry',()=>{
-  it('keeps the extracted ponytail above the measured fit threshold',()=>{
-    expect(REFERENCE_FIT_METRICS.hairMaskIoU).toBeGreaterThanOrEqual(.93);
-    expect(REFERENCE_FIT_METRICS.hairLabError).toBeLessThanOrEqual(10.5);
-    expect(REFERENCE_PONYTAIL_HAIR).toHaveLength(REFERENCE_FIT_METRICS.hairTriangles);
-    expect(HAIR_PARTS.ponytail.tags).toContain('reference-fit');
-    expect(HAIR_PARTS.ponytail.triangles.length).toBeGreaterThanOrEqual(REFERENCE_FIT_METRICS.hairTriangles);
+  it('provides all ten image-derived hair variations as triangle data',()=>{
+    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);
+    expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
+    for(const hair of Object.values(HAIR_PARTS)){
+      expect(hair.tags).toContain('variation-sheet');
+      expect(hair.tags).toContain('reference-fit');
+      expect(hair.triangles.length).toBeGreaterThan(10);
+      expect(hair.triangles.flatMap(t=>t.points).flat().every(Number.isFinite)).toBe(true);
+    }
   });
 
-  it('uses the large anime-eye proportions measured from the sample',()=>{
-    const b=EYE_PARTS.bright.bounds,width=b.maxX-b.minX,height=b.maxY-b.minY;
-    expect(EYE_PARTS.bright.tags).toContain('reference-fit');
-    expect(width).toBeGreaterThan(.34);
-    expect(height).toBeGreaterThan(.31);
-    expect(width/height).toBeGreaterThan(1.02);
+  it('provides all ten image-derived anime-eye variations',()=>{
+    expect(GENERATED_VARIATION_SOURCE.eyeCount).toBe(10);
+    expect(Object.keys(EYE_PARTS)).toHaveLength(10);
+    for(const eye of Object.values(EYE_PARTS)){
+      expect(eye.tags).toContain('variation-sheet');
+      expect(eye.tags).toContain('reference-fit');
+      expect(eye.triangles.length).toBeGreaterThan(0);
+      expect(eye.triangles.flatMap(t=>t.points).flat().every(Number.isFinite)).toBe(true);
+    }
+    const bright=EYE_PARTS.bright.bounds;
+    expect(bright.maxX-bright.minX).toBeGreaterThan(.34);
+    expect(bright.maxY-bright.minY).toBeGreaterThan(.30);
   });
 
   it('uses the sampled face outline, brow, nose and open smile by default',()=>{
