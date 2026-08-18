@@ -3,12 +3,13 @@ export type Triangle = readonly [Vec2, Vec2, Vec2];
 
 export type CharacterBaseId = 'female' | 'male';
 export type HairStyleId = 'ponytail' | 'bob' | 'side-tail' | 'twin-tail' | 'braid' | 'long' | 'wavy' | 'short-spike' | 'bun' | 'half-up';
-export type FaceShapeId = 'soft' | 'oval' | 'angular' | 'round';
+export type FaceShapeId = 'soft' | 'oval' | 'angular' | 'round' | 'square' | 'pointed' | 'long-oval' | 'hex' | 'diamond' | 'tapered';
 export type EyeStyleId = 'bright' | 'determined' | 'sharp' | 'round' | 'soft' | 'sleepy' | 'sparkle' | 'closed' | 'narrow' | 'side-glance';
-export type BrowStyleId = 'soft' | 'straight' | 'angled' | 'thin' | 'bold';
-export type NoseStyleId = 'diamond' | 'small' | 'line' | 'soft';
-export type MouthStyleId = 'smile-open' | 'smile' | 'neutral' | 'soft-smile' | 'o';
-export type PartCategory = 'body' | 'hair' | 'face' | 'eye' | 'brow' | 'nose' | 'mouth';
+export type BrowStyleId = 'soft' | 'straight' | 'angled' | 'thin' | 'bold' | 'arched' | 'calm' | 'raised' | 'flat' | 'worried';
+export type NoseStyleId = 'diamond' | 'small' | 'line' | 'soft' | 'tall' | 'tiny' | 'faceted' | 'profile' | 'wide' | 'button';
+export type MouthStyleId = 'smile-open' | 'smile' | 'neutral' | 'soft-smile' | 'o' | 'surprised' | 'smirk' | 'frown' | 'wide-open' | 'curve';
+export type OutfitStyleId = 'hooded' | 'high-collar' | 'zip-collar' | 'drawstring' | 'short-sleeve' | 'vest';
+export type PartCategory = 'body' | 'outfit' | 'hair' | 'face' | 'eye' | 'brow' | 'nose' | 'mouth';
 export type ColorRole = 'skin' | 'hair' | 'eyes' | 'brows' | 'jacket' | 'accent' | 'shirt' | 'hood' | 'strap' | 'white' | 'mouth' | 'tongue' | 'pupil';
 
 export interface PartTransform {
@@ -41,6 +42,7 @@ export interface PartDefinition<T extends string = string> {
 export interface CharacterDefinition {
   version: 1;
   baseStyle: CharacterBaseId;
+  outfitStyle: OutfitStyleId;
   hairStyle: HairStyleId;
   faceShape: FaceShapeId;
   eyeStyle: EyeStyleId;
