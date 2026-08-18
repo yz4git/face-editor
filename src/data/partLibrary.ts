@@ -10,7 +10,10 @@ import {
   REFERENCE_FEMALE_ACCENT, REFERENCE_FEMALE_HOOD, REFERENCE_FEMALE_JACKET,
   REFERENCE_FEMALE_SHIRT, REFERENCE_FEMALE_STRAP,
 } from './referenceBodyGeometry';
-import { GENERATED_EYE_VARIANTS, GENERATED_HAIR_VARIANTS } from './generatedVariationGeometry';
+import {
+  GENERATED_EYE_VARIANTS, GENERATED_HAIR_VARIANTS, HAIR_REFERENCE_BOUNDS,
+  type ReferenceBounds,
+} from './generatedVariationGeometry';
 
 type TriSpec = Omit<PartTriangleDefinition,'points'> & { points: readonly [Vec2,Vec2,Vec2] };
 type ReferenceTri={points:readonly [Vec2,Vec2,Vec2];shade:number};
@@ -74,10 +77,46 @@ function referenceSoftFacePart():PartDefinition<FaceShapeId>{
 const hairLabels:Record<HairStyleId,string>={
   ponytail:'High ponytail',bob:'Short bob','side-tail':'Side ponytail','twin-tail':'Twin tails',braid:'Side braid',long:'Long straight',wavy:'Medium wavy','short-spike':'Short spiky',bun:'High bun','half-up':'Half up',
 };
+const rawBounds=(points:readonly Vec2[]):ReferenceBounds=>{
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for(const[x,y]of points){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}
+  return{minX,minY,maxX,maxY};
+};
+const fitPoint=(p:Vec2,from:ReferenceBounds,to:ReferenceBounds):Vec2=>{
+  const nx=(p[0]-from.minX)/Math.max(from.maxX-from.minX,.0001),ny=(p[1]-from.minY)/Math.max(from.maxY-from.minY,.0001);
+  return[to.minX+nx*(to.maxX-to.minX),to.minY+ny*(to.maxY-to.minY)];
+};
+const isBackHair=(id:HairStyleId,points:readonly Vec2[])=>{
+  const x=points.reduce((s,p)=>s+p[0],0)/points.length,y=points.reduce((s,p)=>s+p[1],0)/points.length;
+  if(id==='ponytail')return x>.54;
+  if(id==='side-tail')return x>.58&&y<1.35;
+  if(id==='twin-tail')return Math.abs(x)>.58;
+  if(id==='bun')return x>.38&&y>1.72;
+  if(id==='half-up')return x>.20&&y>2.02;
+  return false;
+};
+const rotatedQuad=(cx:number,cy:number,w:number,h:number,angle:number):readonly [Vec2,Vec2,Vec2,Vec2]=>{
+  const c=Math.cos(angle),s=Math.sin(angle),pts:Vec2[]=[[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]];
+  const out=pts.map(([x,y])=>[cx+x*c-y*s,cy+x*s+y*c] as Vec2);
+  return[out[0],out[1],out[2],out[3]];
+};
+const HAIR_TIES:Partial<Record<HairStyleId,readonly [number,number,number,number,number][]>>={
+  ponytail:[[.79,2.03,.30,.075,-.28]],
+  'side-tail':[[.95,.37,.18,.065,-.20]],
+  'twin-tail':[[-.76,1.83,.16,.06,.42],[.76,1.83,.16,.06,-.42]],
+  braid:[[.62,-.84,.15,.065,.08]],
+  bun:[[.89,2.00,.24,.065,-.34]],
+  'half-up':[[.42,2.25,.18,.06,-.08]],
+};
 function generatedHairPart(id:HairStyleId):PartDefinition<HairStyleId>{
-  const source=GENERATED_HAIR_VARIANTS[id];
-  const geometry:TriSpec[]=source.map(({role,points,shade})=>tri(role==='hairTie'?'hair-tie':'hair-front',role==='hairTie'?16:15,role==='hairTie'?'mouth':'hair',points[0],points[1],points[2],shade));
-  return part(id,hairLabels[id],'hair',geometry,[id,'hair','variation-sheet','reference-fit']);
+  const source=GENERATED_HAIR_VARIANTS[id],sourcePoints=source.flatMap(item=>item.points),from=rawBounds(sourcePoints),to=HAIR_REFERENCE_BOUNDS[id];
+  const geometry:TriSpec[]=source.map(({points,shade})=>{
+    const fitted=points.map(p=>fitPoint(p,from,to)) as unknown as readonly [Vec2,Vec2,Vec2];
+    const back=isBackHair(id,fitted);
+    return tri(back?'hair-back':'hair-front',back?3:15,'hair',fitted[0],fitted[1],fitted[2],shade);
+  });
+  for(const [cx,cy,w,h,a] of HAIR_TIES[id]??[]){const[q0,q1,q2,q3]=rotatedQuad(cx,cy,w,h,a);geometry.push(...quad('hair-tie',16,'mouth',q0,q1,q2,q3,5,-3));}
+  return part(id,hairLabels[id],'hair',geometry,[id,'hair','variation-sheet','reference-fit','face-aligned-v2']);
 }
 
 const eyeLabels:Record<EyeStyleId,string>={
@@ -86,11 +125,13 @@ const eyeLabels:Record<EyeStyleId,string>={
 function generatedEyePart(id:EyeStyleId):PartDefinition<EyeStyleId>{
   const source=GENERATED_EYE_VARIANTS[id];
   const geometry:TriSpec[]=source.map(({role,points,shade})=>{
+    if(role==='outline')return tri('eye-outline',8,'pupil',points[0],points[1],points[2],shade);
     if(role==='white')return tri('eye-white',9,'white',points[0],points[1],points[2],shade);
     if(role==='eyes')return tri('iris',10,'eyes',points[0],points[1],points[2],shade);
-    return tri('pupil',11,'pupil',points[0],points[1],points[2],shade);
+    if(role==='pupil')return tri('pupil',11,'pupil',points[0],points[1],points[2],shade);
+    return tri('eye-glint',12,'white',points[0],points[1],points[2],0);
   });
-  return part(id,eyeLabels[id],'eye',geometry,[id,'eye','variation-sheet','reference-fit']);
+  return part(id,eyeLabels[id],'eye',geometry,[id,'eye','variation-sheet','reference-fit','painter-order-v2']);
 }
 
 function browPart(id:BrowStyleId,label:string,w:number,h:number,angle=0):PartDefinition<BrowStyleId>{return part(id,label,'brow',[...quad('brows',12,'brows',[-w/2,0],[w/2,angle],[w/2,angle+h],[-w/2,h],0,8)],['brow']);}
