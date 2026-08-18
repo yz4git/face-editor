@@ -1,6 +1,6 @@
 import type { CharacterDefinition, ColorRole, PartDefinition } from '../core/types';
 
-const FIXED:Record<Exclude<ColorRole,'skin'|'hair'|'eyes'|'brows'|'jacket'|'accent'>,string>={shirt:'#16212b',hood:'#f3eee4',strap:'#6b4529',white:'#ffffff',mouth:'#7b3437',tongue:'#e26d78',pupil:'#12110f'};
+const FIXED:Record<Exclude<ColorRole,'skin'|'hair'|'eyes'|'brows'|'jacket'|'accent'>,string>={shirt:'#16212b',hood:'#f3eee4',strap:'#6b4529',metal:'#d0ccc4',white:'#ffffff',mouth:'#7b3437',tongue:'#e26d78',pupil:'#12110f'};
 const clamp=(n:number)=>Math.max(0,Math.min(255,n));
 const shade=(hex:string,delta=0)=>{const h=hex.replace('#','');const rgb=[0,2,4].map(i=>parseInt(h.slice(i,i+2),16));return`#${rgb.map(v=>clamp(v+delta).toString(16).padStart(2,'0')).join('')}`;};
 const color=(role:ColorRole,c:CharacterDefinition,delta=0)=>shade(role==='skin'?c.colors.skin:role==='hair'?c.colors.hair:role==='eyes'?c.colors.eyes:role==='brows'?c.colors.brows:role==='jacket'?c.colors.jacket:role==='accent'?c.colors.accent:FIXED[role],delta);
