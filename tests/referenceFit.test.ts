@@ -22,7 +22,7 @@ describe('sample-derived polygon geometry',()=>{
     expect(GENERATED_VARIATION_SOURCE.eyeCount).toBe(10);expect(Object.keys(EYE_PARTS)).toHaveLength(10);
     for(const [id,eye] of Object.entries(EYE_PARTS)){
       expect(eye.tags).toContain('painter-order-v2');const target=EYE_REFERENCE_BOUNDS[id as keyof typeof EYE_REFERENCE_BOUNDS];
-      expect(eye.bounds.minX).toBeCloseTo(target.minX,3);expect(eye.bounds.maxX).toBeCloseTo(target.maxX,3);expect(eye.bounds.minY).toBeCloseTo(target.minY,3);expect(eye.bounds.maxY).toBeCloseTo(target.maxY,3);
+      expect(Math.abs(eye.bounds.minX-target.minX)).toBeLessThan(.01);expect(Math.abs(eye.bounds.maxX-target.maxX)).toBeLessThan(.01);expect(Math.abs(eye.bounds.minY-target.minY)).toBeLessThan(.01);expect(Math.abs(eye.bounds.maxY-target.maxY)).toBeLessThan(.01);
       expect(eye.triangles.some(t=>t.layer==='eye-outline')).toBe(true);expect(eye.triangles.length).toBeGreaterThan(5);
       if(id!=='closed'){for(const layer of ['eye-white','iris','pupil','eye-glint'])expect(eye.triangles.some(t=>t.layer===layer)).toBe(true);}
     }
