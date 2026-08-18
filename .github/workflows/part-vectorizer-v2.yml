@@ -17,8 +17,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.12.0'
-          cache: npm
-          cache-dependency-path: tools/part-vectorizer-v2/package-lock.json
       - name: Install vectorizer dependencies
         working-directory: tools/part-vectorizer-v2
         run: npm install
