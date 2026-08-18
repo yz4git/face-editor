@@ -5,7 +5,7 @@ import { EYE_RAW_A } from './generated/eyeRawA';
 import { EYE_RAW_B } from './generated/eyeRawB';
 
 export type GeneratedHairRole='hair'|'hairTie';
-export type GeneratedEyeRole='outline'|'white'|'eyes'|'pupil'|'glint';
+export type GeneratedEyeRole='pupil'|'white'|'eyes';
 export interface GeneratedVariantTriangle<R extends string>{role:R;points:readonly [Vec2,Vec2,Vec2];shade:number}
 
 export const GENERATED_VARIATION_SOURCE={
@@ -22,12 +22,21 @@ const decodeHair=(raw:RawSet):GeneratedVariantTriangle<GeneratedHairRole>[]=>raw
   shade:values[0],
   points:[point(values,1),point(values,3),point(values,5)],
 }));
-const EYE_ROLES:readonly GeneratedEyeRole[]=['outline','white','eyes','pupil','glint'];
-const decodeEye=(raw:RawSet):GeneratedVariantTriangle<GeneratedEyeRole>[]=>raw.map(values=>({
-  role:EYE_ROLES[values[0]]??'outline',
-  shade:values[1],
-  points:[point(values,2),point(values,4),point(values,6)],
-}));
+const inset=(center:Vec2,p:Vec2,factor=.82):Vec2=>[center[0]+(p[0]-center[0])*factor,center[1]+(p[1]-center[1])*factor];
+const decodeEye=(raw:RawSet):GeneratedVariantTriangle<GeneratedEyeRole>[]=>raw.flatMap(values=>{
+  const sourceRole=values[0],shade=values[1],a=point(values,2),b=point(values,4),c=point(values,6);
+  if(sourceRole===0){
+    const ib=inset(a,b),ic=inset(a,c);
+    return[
+      {role:'pupil' as const,shade:0,points:[b,c,ic] as const},
+      {role:'pupil' as const,shade:0,points:[b,ic,ib] as const},
+    ];
+  }
+  if(sourceRole===1)return[{role:'white' as const,shade,points:[a,b,c] as const}];
+  if(sourceRole===2)return[{role:'eyes' as const,shade,points:[a,b,c] as const}];
+  if(sourceRole===3)return[{role:'pupil' as const,shade,points:[a,b,c] as const}];
+  return[{role:'eyes' as const,shade:220,points:[a,b,c] as const}];
+});
 
 const hairRaw={...HAIR_RAW_A,...HAIR_RAW_B};
 const eyeRaw={...EYE_RAW_A,...EYE_RAW_B};
