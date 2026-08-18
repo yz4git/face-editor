@@ -58,3 +58,5 @@ Artifacts when GitHub Actions can execute:
 ## Validation status rule
 
 GitHub Actions is currently failing before checkout with no job steps. The committed gates are ready, but they must not be described as Actions-passed until a runner actually executes them. The PR stays separate from `main` while this executable validation path is unavailable.
+
+Checkpointing policy: every logical refinement lands as its own commit on the PR branch before the next refinement begins, so a stopped session cannot erase completed work.
