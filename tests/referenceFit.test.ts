@@ -6,7 +6,7 @@ import { REFERENCE_BODY_FIT_METRICS } from '../src/data/referenceBodyGeometry';
 
 describe('sample-derived polygon geometry',()=>{
   it('keeps all ten hairstyles aligned to high-IoU source-sheet geometry',()=>{
-    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);expect(GENERATED_VARIATION_SOURCE.fitRevision).toBe(10);expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
+    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);expect(GENERATED_VARIATION_SOURCE.fitRevision).toBe(11);expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
     for(const [id,hair] of Object.entries(HAIR_PARTS)){
       const key=id as keyof typeof HAIR_REFERENCE_BOUNDS,target=HAIR_REFERENCE_BOUNDS[key],fit=HAIR_REFERENCE_FIT[key];
       expect(hair.tags).toContain('variation-sheet');expect(hair.tags).toContain('face-aligned-v2');expect(hair.triangles.length).toBeGreaterThanOrEqual(fit.triangles);
@@ -18,7 +18,7 @@ describe('sample-derived polygon geometry',()=>{
     for(const id of ['ponytail','side-tail','twin-tail','braid','bun','half-up'] as const)expect(HAIR_PARTS[id].triangles.some(t=>t.layer==='hair-tie')).toBe(true);
   });
 
-  it('reconstructs all ten eyes from source-sheet contour and full-iris coordinates',()=>{
+  it('reconstructs all ten eyes as tall source-style anime shapes',()=>{
     expect(GENERATED_VARIATION_SOURCE.eyeCount).toBe(10);expect(Object.keys(EYE_PARTS)).toHaveLength(10);
     for(const [id,eye] of Object.entries(EYE_PARTS)){
       expect(eye.tags).toContain('painter-order-v2');const target=EYE_REFERENCE_BOUNDS[id as keyof typeof EYE_REFERENCE_BOUNDS];
@@ -26,7 +26,7 @@ describe('sample-derived polygon geometry',()=>{
       expect(eye.triangles.some(t=>t.layer==='eye-outline')).toBe(true);expect(eye.triangles.length).toBeGreaterThan(5);
       if(id!=='closed'){for(const layer of ['eye-white','iris','pupil','eye-glint'])expect(eye.triangles.some(t=>t.layer===layer)).toBe(true);}
     }
-    const bright=EYE_REFERENCE_BOUNDS.bright;expect(bright.maxX-bright.minX).toBeGreaterThanOrEqual(.36);expect(bright.maxY-bright.minY).toBeGreaterThanOrEqual(.40);
+    const bright=EYE_REFERENCE_BOUNDS.bright,width=bright.maxX-bright.minX,height=bright.maxY-bright.minY;expect(width).toBeGreaterThanOrEqual(.28);expect(height).toBeGreaterThanOrEqual(.40);expect(width/height).toBeLessThan(.75);
     expect(EYE_PARTS.sparkle.triangles.filter(t=>t.layer==='eye-glint').length).toBeGreaterThan(EYE_PARTS.bright.triangles.filter(t=>t.layer==='eye-glint').length);
   });
 
