@@ -8,7 +8,7 @@ export type GeneratedEyeRole='outline'|'white'|'eyes'|'pupil'|'highlight';
 export interface GeneratedVariantTriangle<R extends string>{role:R;points:readonly [Vec2,Vec2,Vec2];shade:number}
 export interface ReferenceBounds{minX:number;minY:number;maxX:number;maxY:number}
 
-export const GENERATED_VARIATION_SOURCE={kind:'generated-reference-sheet',hairCount:10,eyeCount:10,fitRevision:10,method:'source-sheet mask segmentation + feature-preserving hair Delaunay + face-relative display calibration + source-contour eye reconstruction + full source-region iris hulls'} as const;
+export const GENERATED_VARIATION_SOURCE={kind:'generated-reference-sheet',hairCount:10,eyeCount:10,fitRevision:11,method:'source-sheet mask segmentation + feature-preserving hair Delaunay + face-relative display calibration + source-contour eyes + source iris hulls + reference face aspect calibration'} as const;
 
 export const HAIR_REFERENCE_BOUNDS:Record<HairStyleId,ReferenceBounds>={
   ponytail:{minX:-.82,maxX:1.35,minY:-.35,maxY:2.18},
@@ -24,17 +24,20 @@ export const HAIR_REFERENCE_BOUNDS:Record<HairStyleId,ReferenceBounds>={
 };
 export const HAIR_REFERENCE_FIT=HAIR_PACKED_FIT;
 
+// Widths are intentionally slimmer than the previous pass: measured against the
+// original character-reference face, the eyes are tall anime shapes rather than
+// wide round Mii-like shapes. Heights remain unchanged to preserve the source sheet.
 export const EYE_REFERENCE_BOUNDS:Record<EyeStyleId,ReferenceBounds>={
-  bright:{minX:-.180,maxX:.180,minY:-.205,maxY:.205},
-  determined:{minX:-.185,maxX:.185,minY:-.165,maxY:.165},
-  sharp:{minX:-.195,maxX:.195,minY:-.165,maxY:.165},
-  round:{minX:-.180,maxX:.180,minY:-.190,maxY:.190},
-  soft:{minX:-.190,maxX:.190,minY:-.160,maxY:.160},
-  sleepy:{minX:-.205,maxX:.205,minY:-.125,maxY:.125},
-  sparkle:{minX:-.190,maxX:.190,minY:-.200,maxY:.200},
-  closed:{minX:-.190,maxX:.190,minY:-.055,maxY:.055},
-  narrow:{minX:-.210,maxX:.210,minY:-.115,maxY:.115},
-  'side-glance':{minX:-.190,maxX:.190,minY:-.150,maxY:.150},
+  bright:{minX:-.145,maxX:.145,minY:-.205,maxY:.205},
+  determined:{minX:-.150,maxX:.150,minY:-.165,maxY:.165},
+  sharp:{minX:-.160,maxX:.160,minY:-.165,maxY:.165},
+  round:{minX:-.145,maxX:.145,minY:-.190,maxY:.190},
+  soft:{minX:-.155,maxX:.155,minY:-.160,maxY:.160},
+  sleepy:{minX:-.170,maxX:.170,minY:-.125,maxY:.125},
+  sparkle:{minX:-.155,maxX:.155,minY:-.200,maxY:.200},
+  closed:{minX:-.160,maxX:.160,minY:-.055,maxY:.055},
+  narrow:{minX:-.175,maxX:.175,minY:-.115,maxY:.115},
+  'side-glance':{minX:-.155,maxX:.155,minY:-.150,maxY:.150},
 };
 
 const boundsOfPoints=(points:readonly Vec2[]):ReferenceBounds=>{let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const[x,y]of points){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}return{minX,minY,maxX,maxY};};
