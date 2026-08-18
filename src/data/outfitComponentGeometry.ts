@@ -18,22 +18,25 @@ const INDEX={
   'strap:simple':[1134,47],'strap:padded':[1181,59],'strap:single-pouch':[1240,66],'strap:double-pouch':[1306,63],'strap:cross':[1369,59],'strap:y-harness':[1428,57],
   'accent:diamond':[1485,66],'accent:long-strip':[1551,33],'accent:point-strip':[1584,32],'accent:corner':[1616,31],'accent:chevron':[1647,38],'accent:slash':[1685,40],'accent:taper':[1725,51],'accent:triangle':[1776,42],
 } as const;
-export const GENERATED_OUTFIT_COMPONENT_KEYS=Object.keys(INDEX) as (keyof typeof INDEX)[];
+export const GENERATED_OUTFIT_COMPONENT_KEYS=Object.freeze(Object.keys(INDEX) as (keyof typeof INDEX)[]);
 
-async function inflateGzip(value:string):Promise<Uint8Array>{
-  const bytes=Uint8Array.from(atob(value),c=>c.charCodeAt(0));
-  const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+function decodeBase64(value:string):Uint8Array<ArrayBuffer>{const binary=atob(value),out=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)out[i]=binary.charCodeAt(i);return out;}
+async function inflateGzip(value:string):Promise<Uint8Array<ArrayBuffer>>{
+  if(typeof DecompressionStream==='undefined')throw new Error('This browser does not support gzip DecompressionStream required by modular outfit polygon assets.');
+  const compressed=decodeBase64(value),copy=new Uint8Array(compressed.byteLength);copy.set(compressed);
+  const stream=new Blob([copy.buffer]).stream().pipeThrough(new DecompressionStream('gzip'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
-const raw=await inflateGzip(OUTFIT_COMPONENT_GZIP);
-if(raw.byteLength!==GENERATED_OUTFIT_COMPONENT_META.triangles*GENERATED_OUTFIT_COMPONENT_META.recordBytes)throw new Error(`Outfit component pack size mismatch: ${raw.byteLength}`);
+if(OUTFIT_COMPONENT_GZIP.length!==GENERATED_OUTFIT_COMPONENT_META.compressedBase64Length)throw new Error(`Outfit component compressed payload length mismatch: ${OUTFIT_COMPONENT_GZIP.length}`);
+const raw=await inflateGzip(OUTFIT_COMPONENT_GZIP),expectedBytes=GENERATED_OUTFIT_COMPONENT_META.triangles*GENERATED_OUTFIT_COMPONENT_META.recordBytes;
+if(raw.byteLength!==expectedBytes)throw new Error(`Outfit component pack size mismatch: ${raw.byteLength} !== ${expectedBytes}`);
 const view=new DataView(raw.buffer,raw.byteOffset,raw.byteLength);
 const PARTS=new Map<string,readonly OutfitComponentTriangle[]>();
 for(const[key,[start,count]]of Object.entries(INDEX)){
   const triangles:OutfitComponentTriangle[]=[];
   for(let i=0;i<count;i++){
-    const offset=(start+i)*14,coords:number[]=[];
-    for(let j=0;j<6;j++)coords.push(view.getInt16(offset+j*2,true)/10000);
+    const offset=(start+i)*GENERATED_OUTFIT_COMPONENT_META.recordBytes,coords:number[]=[];
+    for(let j=0;j<6;j++)coords.push(view.getInt16(offset+j*2,true)/GENERATED_OUTFIT_COMPONENT_META.coordinateScale);
     const shade=view.getInt8(offset+12),role=ROLES[view.getUint8(offset+13)];
     if(!role)throw new Error(`Unknown outfit component role in ${key}`);
     triangles.push({role,shade,points:[[coords[0],coords[1]],[coords[2],coords[3]],[coords[4],coords[5]]]});
