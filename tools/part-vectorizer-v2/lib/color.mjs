@@ -24,8 +24,13 @@ function weightedDominant(shapes,background){
   groups.sort((a,b)=>b.score-a.score);return groups[0]?.color??{r:70,g:50,b:35};
 }
 
+function explicitRoles(shapes,roleHints){
+  if(!roleHints.roleColors)return null;const entries=[];for(const[role,values]of Object.entries(roleHints.roleColors)){for(const value of(Array.isArray(values)?values:[values]))entries.push({role,color:typeof value==='string'?hexToRgb(value):value});}const tolerance=roleHints.roleColorTolerance??24;
+  return shapes.flatMap(shape=>{let best=null,bestD=Infinity;for(const entry of entries){const d=deltaE(shape.fill,entry.color);if(d<bestD){bestD=d;best=entry;}}return best&&bestD<=tolerance?[{...shape,role:best.role}]:[];});
+}
+
 export function classifyShapes(shapes,{kind,background,roleHints={}}){
-  const filtered=shapes.filter(s=>deltaE(s.fill,background)>(roleHints.backgroundTolerance??9));
+  const filtered=shapes.filter(s=>deltaE(s.fill,background)>(roleHints.backgroundTolerance??9)),explicit=explicitRoles(filtered,roleHints);if(explicit)return explicit;
   if(kind==='hair'){
     const dominant=roleHints.hairColor?hexToRgb(roleHints.hairColor):weightedDominant(filtered,background),hairTolerance=roleHints.hairTolerance??32;
     return filtered.flatMap(shape=>{const d=deltaE(shape.fill,dominant),lab=rgbToLab(shape.fill),sat=saturation(shape.fill);if(d<=hairTolerance)return[{...shape,role:'hair'}];if(sat>.32&&shape.area<(roleHints.maxAccentArea??1800)&&lab.l<78)return[{...shape,role:'hairTie'}];return[];});
