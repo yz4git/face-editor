@@ -22,7 +22,7 @@ const insetFor=(manifest,item)=>({...manifest.contentInset,...manifest.kindInset
 
 function cellRect(manifest,item,imageWidth,imageHeight){
   if(item.rect){const{x,y,width,height}=item.rect;return{left:ensureInt(x),top:ensureInt(y),width:ensureInt(width,1),height:ensureInt(height,1)};}
-  const grid=manifest.grid??{},columns=grid.columns??1,rows=grid.rows??1,index=item.cell??0,col=item.column??index%columns,row=item.row??Math.floor(index/columns),x=grid.x??0,y=grid.y??0,gapX=grid.gapX??0,gapY=grid.gapY??0,totalWidth=grid.width??(imageWidth-x),totalHeight=grid.height??(imageHeight-y),cellWidth=(totalWidth-gapX*(columns-1))/columns,cellHeight=(totalHeight-gapY*(rows-1))/rows,inset=insetFor(manifest,item),leftFrac=inset.left??0,rightFrac=inset.right??0,topFrac=inset.top??0,bottomFrac=inset.bottom??0;
+  const grid={...manifest.grid,...manifest.kindGrids?.[item.kind],...item.grid},columns=grid.columns??1,rows=grid.rows??1,index=item.cell??0,col=item.column??index%columns,row=item.row??Math.floor(index/columns),x=grid.x??0,y=grid.y??0,gapX=grid.gapX??0,gapY=grid.gapY??0,totalWidth=grid.width??(imageWidth-x),totalHeight=grid.height??(imageHeight-y),cellWidth=(totalWidth-gapX*(columns-1))/columns,cellHeight=(totalHeight-gapY*(rows-1))/rows,inset=insetFor(manifest,item),leftFrac=inset.left??0,rightFrac=inset.right??0,topFrac=inset.top??0,bottomFrac=inset.bottom??0;
   const left=x+col*(cellWidth+gapX)+cellWidth*leftFrac,top=y+row*(cellHeight+gapY)+cellHeight*topFrac,width=cellWidth*(1-leftFrac-rightFrac),height=cellHeight*(1-topFrac-bottomFrac);
   return{left:ensureInt(left),top:ensureInt(top),width:ensureInt(width,1),height:ensureInt(height,1)};
 }
