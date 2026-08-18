@@ -75,9 +75,9 @@ const HAIR_REFERENCE_SEED:Record<HairStyleId,PartTransform>={
 function quantile(values:number[],q:number){const sorted=[...values].sort((a,b)=>a-b),index=(sorted.length-1)*q,lo=Math.floor(index),hi=Math.ceil(index);return sorted[lo]*(hi-index)+sorted[hi]*(index-lo);}
 function hairCloud(def:PartDefinition){
   const xs:number[]=[],ys:number[]=[];for(const triangle of def.triangles)for(const[x,y]of triangle.points){xs.push(x);ys.push(y);}
-  const qx20=quantile(xs,.2),qx50=quantile(xs,.5),qx80=quantile(xs,.8),qy12=quantile(ys,.12),qy90=quantile(ys,.9);
+  const qx20=quantile(xs,.2),qx50=quantile(xs,.5),qx80=quantile(xs,.8),qy90=quantile(ys,.9);
   const centralY:number[]=[];for(const triangle of def.triangles)for(const[x,y]of triangle.points)if(x>=qx20&&x<=qx80)centralY.push(y);
-  return{qx20,qx50,qx80,qy12,qy90,fringe:quantile(centralY.length?centralY:ys,.16)};
+  return{qx20,qx50,qx80,qy90,fringe:quantile(centralY.length?centralY:ys,.16)};
 }
 
 const hairCache=new Map<string,{transform:PartTransform;score:number}>();
@@ -98,8 +98,12 @@ export function autoFitHair(id:HairStyleId,def:PartDefinition,face:FitBounds):{t
 
 export function autoFitFace(def:PartDefinition,canonical:FitRect):PartTransform{return fitBoundsToRect(def.bounds,canonical,'contain','center');}
 
-export function autoFitFeature(def:PartDefinition,face:FitBounds,kind:'eye'|'brow'|'nose'|'mouth'):PartTransform{
-  const target=kind==='eye'?rectFromBounds(face,.11,.48,.39,.69):kind==='brow'?rectFromBounds(face,.10,.72,.40,.83):kind==='nose'?rectFromBounds(face,.43,.28,.57,.52):rectFromBounds(face,.30,.08,.70,.29);
+export function autoFitFeature(def:PartDefinition,face:FitBounds,kind:'eye'|'brow'|'nose'|'mouth',side:-1|0|1=0):PartTransform{
+  let target:FitRect;
+  if(kind==='eye')target=side<0?rectFromBounds(face,.11,.48,.39,.69):rectFromBounds(face,.61,.48,.89,.69);
+  else if(kind==='brow')target=side<0?rectFromBounds(face,.10,.72,.40,.83):rectFromBounds(face,.60,.72,.90,.83);
+  else if(kind==='nose')target=rectFromBounds(face,.43,.28,.57,.52);
+  else target=rectFromBounds(face,.30,.08,.70,.29);
   return fitBoundsToRect(def.bounds,target,'contain','center');
 }
 
