@@ -11,7 +11,7 @@ This audit treats placement as geometry, not as a list of hand-tuned per-part co
 
 ## Robust source bounds
 
-Generated source sheets can leave very small detached triangles near a cell edge. Those triangles remain in the render mesh, but fitting uses area-coverage bounds so tiny fragments cannot rescale or move the whole part. Semantic bounds also exclude non-placement details such as eye glints, mouth details and strap metal.
+Generated source sheets can leave very small detached triangles near a cell edge. Those triangles remain in the render mesh, but fitting uses area-coverage bounds so tiny fragments cannot rescale or move the whole part. Semantic bounds also exclude non-placement details such as eye glints, mouth details and strap metal. Repeated bounds are cached so large audit sweeps do not continually rescan the same dense triangle sets.
 
 ## Hair fitting and depth
 
