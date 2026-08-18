@@ -1,0 +1,36 @@
+name: Part Vectorizer v2
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/part-vectorizer-v2/**'
+      - '.github/workflows/part-vectorizer-v2.yml'
+  workflow_dispatch:
+
+jobs:
+  vectorizer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: npm
+          cache-dependency-path: tools/part-vectorizer-v2/package-lock.json
+      - name: Install vectorizer dependencies
+        working-directory: tools/part-vectorizer-v2
+        run: npm install
+      - name: Run parser and end-to-end vectorizer tests
+        working-directory: tools/part-vectorizer-v2
+        run: npm test
+      - name: Upload vectorizer fixture audit
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: part-vectorizer-v2-audit
+          path: |
+            tools/part-vectorizer-v2/test/output/
+            tools/part-vectorizer-v2/package-lock.json
+          if-no-files-found: warn
