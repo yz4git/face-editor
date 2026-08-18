@@ -2,13 +2,14 @@ import type { EyeStyleId, HairStyleId, Vec2 } from '../core/types';
 import { EYE_CONTOUR_SHAPES } from './generated/eyeContourShapes';
 import { EYE_IRIS_SHAPES } from './generated/eyeIrisShapes';
 import { HAIR_PACKED_CHARS, HAIR_PACKED_FIT, HAIR_PACKED_INDEX } from './generated/hairPacked';
+import { REFERENCE_BRIGHT_EYE_OUTLINE } from './referenceGeometry';
 
 export type GeneratedHairRole='hair'|'hairTie';
 export type GeneratedEyeRole='outline'|'white'|'eyes'|'pupil'|'highlight';
 export interface GeneratedVariantTriangle<R extends string>{role:R;points:readonly [Vec2,Vec2,Vec2];shade:number}
 export interface ReferenceBounds{minX:number;minY:number;maxX:number;maxY:number}
 
-export const GENERATED_VARIATION_SOURCE={kind:'generated-reference-sheet',hairCount:10,eyeCount:10,fitRevision:11,method:'source-sheet mask segmentation + feature-preserving hair Delaunay + face-relative display calibration + source-contour eyes + source iris hulls + reference face aspect calibration'} as const;
+export const GENERATED_VARIATION_SOURCE={kind:'generated-reference-sheet',hairCount:10,eyeCount:10,fitRevision:12,method:'source-sheet mask segmentation + feature-preserving hair Delaunay + face-relative calibration + source-contour eye variants + source iris hulls + sampled default-eye silhouette'} as const;
 
 export const HAIR_REFERENCE_BOUNDS:Record<HairStyleId,ReferenceBounds>={
   ponytail:{minX:-.82,maxX:1.35,minY:-.35,maxY:2.18},
@@ -24,9 +25,6 @@ export const HAIR_REFERENCE_BOUNDS:Record<HairStyleId,ReferenceBounds>={
 };
 export const HAIR_REFERENCE_FIT=HAIR_PACKED_FIT;
 
-// Widths are intentionally slimmer than the previous pass: measured against the
-// original character-reference face, the eyes are tall anime shapes rather than
-// wide round Mii-like shapes. Heights remain unchanged to preserve the source sheet.
 export const EYE_REFERENCE_BOUNDS:Record<EyeStyleId,ReferenceBounds>={
   bright:{minX:-.145,maxX:.145,minY:-.205,maxY:.205},
   determined:{minX:-.150,maxX:.150,minY:-.165,maxY:.165},
@@ -79,7 +77,7 @@ const starTriangles=(cx:number,cy:number,r:number,inner=.34,points=4):GeneratedV
 const WHITE_INSET:Record<EyeStyleId,readonly [number,number,number]>={bright:[.90,.86,-.004],determined:[.90,.78,-.003],sharp:[.90,.76,-.003],round:[.90,.86,-.003],soft:[.91,.80,-.003],sleepy:[.92,.70,-.004],sparkle:[.90,.86,-.003],closed:[0,0,0],narrow:[.93,.68,-.003],'side-glance':[.94,.80,-.003]};
 const PUPIL_SCALE:Record<EyeStyleId,readonly [number,number]>={bright:[.60,.72],determined:[.58,.72],sharp:[.58,.72],round:[.60,.72],soft:[.58,.70],sleepy:[.58,.68],sparkle:[.55,.68],closed:[0,0],narrow:[.58,.68],'side-glance':[.60,.72]};
 function contourEye(id:EyeStyleId):GeneratedVariantTriangle<GeneratedEyeRole>[] {
-  const shape=EYE_CONTOUR_SHAPES[id],to=EYE_REFERENCE_BOUNDS[id],from=boundsOfPoints(shape.outer),outer=shape.outer.map(p=>fitPoint(p,from,to)),irisData=EYE_IRIS_SHAPES[id],iris=irisData.iris.map(p=>unitPoint(p,to)),out:GeneratedVariantTriangle<GeneratedEyeRole>[]=[];
+  const shape=EYE_CONTOUR_SHAPES[id],sourceOuter=id==='bright'?REFERENCE_BRIGHT_EYE_OUTLINE:shape.outer,to=EYE_REFERENCE_BOUNDS[id],from=boundsOfPoints(sourceOuter),outer=sourceOuter.map(p=>fitPoint(p,from,to)),irisData=EYE_IRIS_SHAPES[id],iris=irisData.iris.map(p=>unitPoint(p,to)),out:GeneratedVariantTriangle<GeneratedEyeRole>[]=[];
   out.push(...polygonTriangles('outline',outer));
   if(id==='closed')return out;
   const [sx,sy,dy]=WHITE_INSET[id],white=scalePolygon(outer,sx,sy,dy);out.push(...polygonTriangles('white',white));
