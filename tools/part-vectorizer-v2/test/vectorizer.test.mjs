@@ -29,7 +29,7 @@ test('explicit roleColors overrides automatic semantic guessing',()=>{
 });
 
 test('manifest validator rejects duplicate ids and invalid quality gates',()=>{
-  const base={schemaVersion:2,source:'parts.png',grid:{columns:1,rows:1},items:[{id:'a',kind:'hair',cell:0}]};assert.equal(validateManifest(structuredClone(base)),base===base?base:base);
+  const base={schemaVersion:2,source:'parts.png',grid:{columns:1,rows:1},items:[{id:'a',kind:'hair',cell:0}]};assert.deepEqual(validateManifest(structuredClone(base)),base);
   assert.throws(()=>validateManifest({...base,items:[...base.items,{id:'a',kind:'eye',cell:0}]}),/duplicate item id/);
   assert.throws(()=>validateManifest({...base,quality:{minMaskIoU:1.2}}),/between 0 and 1/);
 });
