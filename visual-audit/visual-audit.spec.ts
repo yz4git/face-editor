@@ -5,6 +5,7 @@ type Family='outfit'|'hood'|'shirt'|'strap'|'accent'|'hair'|'face'|'eye'|'brow'|
 type AuditIssue={code:string;family:string;id:string;severity:'warning'|'error';value:number;limit:number};
 type AuditEntry={id:string;family:string;score:number};
 type AuditReport={version:number;entries:AuditEntry[];issues?:AuditIssue[];totalScore?:number};
+type SweepReport={version:number;caseCount:number;selectablePartCount:number;seenPartCount:number;pairCoverage:{covered:number;total:number;ratio:number};errorCount:number;worstFits:{caseIndex:number;family:string;id:string;score:number}[];errors:unknown[]};
 const families:Record<Family,number>={outfit:6,hood:6,shirt:6,strap:6,accent:8,hair:10,face:10,eye:10,brow:10,nose:10,mouth:10};
 const stride:Record<Family,readonly[number,number]>={outfit:[5,0],hood:[5,1],shirt:[1,2],strap:[5,3],accent:[3,1],hair:[3,0],face:[7,1],eye:[9,2],brow:[1,3],nose:[3,4],mouth:[7,5]};
 const indexFor=(kind:Family,index:number)=>{const[s,o]=stride[kind];return(index*s+o)%families[kind];};
@@ -15,8 +16,11 @@ async function canvasMetrics(canvas:Locator){return canvas.evaluate((element:HTM
 });}
 
 test('Canvas2D full-editor audit covers and auto-fits all 92 generated parts',async({page})=>{
-  test.setTimeout(180_000);mkdirSync('visual-audit/output',{recursive:true});await page.setViewportSize({width:1280,height:720});await page.goto('http://127.0.0.1:4173/?renderer=canvas2d&visualAudit=1');
+  test.setTimeout(240_000);mkdirSync('visual-audit/output',{recursive:true});await page.setViewportSize({width:1280,height:720});await page.goto('http://127.0.0.1:4173/?renderer=canvas2d&visualAudit=1');
   await expect(page.locator('#renderer-mode')).toHaveText('CANVAS2D');const preview=page.locator('#preview'),canvas=page.locator('canvas.character-canvas');await expect(canvas).toBeVisible();await expect(page.locator('.part-thumb')).toHaveCount(92);for(const[kind,count]of Object.entries(families))await expect(page.locator(`[data-kind="${kind}"]`)).toHaveCount(count);await expect(preview).toHaveAttribute('data-autofit','v2');
+
+  // The geometry engine independently checks every value-pair across all 11 selectable families.
+  await expect(preview).toHaveAttribute('data-autofit-sweep','complete',{timeout:90_000});const sweep=await page.evaluate(()=>((window as Window&{__FACE_EDITOR_AUTOFIT_SWEEP__?:SweepReport}).__FACE_EDITOR_AUTOFIT_SWEEP__));if(!sweep)throw new Error('Missing exhaustive auto-fit sweep');expect(sweep.selectablePartCount).toBe(92);expect(sweep.seenPartCount).toBe(92);expect(sweep.pairCoverage.ratio).toBe(1);expect(sweep.errorCount).toBe(0);writeFileSync('visual-audit/output/autofit-pairwise-sweep.json',JSON.stringify(sweep,null,2));
 
   const seen=new Set<string>(),reports:{combination:number;metrics:Awaited<ReturnType<typeof canvasMetrics>>;report:AuditReport}[]=[],allEntries:{combination:number;id:string;family:string;score:number}[]=[],issueHistogram:Record<string,number>={};
   for(let i=0;i<20;i++){
