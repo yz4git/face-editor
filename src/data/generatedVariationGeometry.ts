@@ -28,11 +28,17 @@ function decodePackedHair(id:HairStyleId):GeneratedVariantTriangle<GeneratedHair
 
 type RawSet=readonly (readonly number[])[];
 const point=(raw:readonly number[],index:number):Vec2=>[raw[index],raw[index+1]];
-// Role 4 from the first sheet vectorizer mixed sclera antialias islands with the true catchlight.
-// Those large polygons caused the white cross/slab artifacts seen in Visual Audit. Keep the
-// reliable outline/sclera/iris/pupil layers and reconstruct the actual catchlight from the
-// measured iris bounds below.
-const decodeEye=(raw:RawSet):GeneratedVariantTriangle<GeneratedEyeRole>[]=>raw.flatMap(values=>{const sourceRole=values[0],shade=values[1],points:[Vec2,Vec2,Vec2]=[point(values,2),point(values,4),point(values,6)];if(sourceRole===0)return[{role:'outline' as const,shade,points}];if(sourceRole===1)return[{role:'white' as const,shade,points}];if(sourceRole===2)return[{role:'eyes' as const,shade,points}];if(sourceRole===3)return[{role:'pupil' as const,shade,points}];return[];});
+function decodeEye(raw:RawSet):GeneratedVariantTriangle<GeneratedEyeRole>[] {
+  const out:GeneratedVariantTriangle<GeneratedEyeRole>[]=[];
+  for(const values of raw){
+    const sourceRole=values[0],shade=values[1],points:readonly [Vec2,Vec2,Vec2]=[point(values,2),point(values,4),point(values,6)];
+    if(sourceRole===0)out.push({role:'outline',shade,points});
+    else if(sourceRole===1)out.push({role:'white',shade,points});
+    else if(sourceRole===2)out.push({role:'eyes',shade,points});
+    else if(sourceRole===3)out.push({role:'pupil',shade,points});
+  }
+  return out;
+}
 const bounds=(items:readonly GeneratedVariantTriangle<string>[]):ReferenceBounds=>{let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const item of items)for(const[x,y]of item.points){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}return{minX,minY,maxX,maxY};};
 const fit=(p:Vec2,from:ReferenceBounds,to:ReferenceBounds):Vec2=>{const nx=(p[0]-from.minX)/Math.max(from.maxX-from.minX,.0001),ny=(p[1]-from.minY)/Math.max(from.maxY-from.minY,.0001);return[to.minX+nx*(to.maxX-to.minX),to.minY+ny*(to.maxY-to.minY)];};
 const ellipseTriangles=(cx:number,cy:number,rx:number,ry:number,segments=8):GeneratedVariantTriangle<GeneratedEyeRole>[]=>{const out:GeneratedVariantTriangle<GeneratedEyeRole>[]=[];for(let i=0;i<segments;i++){const a=i*Math.PI*2/segments,b=(i+1)*Math.PI*2/segments;out.push({role:'highlight',shade:0,points:[[cx,cy],[cx+Math.cos(a)*rx,cy+Math.sin(a)*ry],[cx+Math.cos(b)*rx,cy+Math.sin(b)*ry]]});}return out;};
