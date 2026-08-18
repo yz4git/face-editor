@@ -1,5 +1,5 @@
 import type { CharacterBundle, CharacterDefinition, ColorRole, CompiledPolygonCharacter, CompiledPolygonLayer, PartDefinition, PartTransform, Vec2 } from './types';
-import { BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, MOUTH_PARTS, NOSE_PARTS } from '../data/partLibrary';
+import { BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS } from '../data/partLibrary';
 
 type LayerDraft={id:string;zIndex:number;positions:number[];colors:number[];indices:number[]};
 const clamp=(n:number)=>Math.max(0,Math.min(255,n));
@@ -11,7 +11,7 @@ class Drafts{private map=new Map<string,LayerDraft>();private layer(id:string,zI
 const apply=(p:Vec2,t:PartTransform,offset:Vec2=[0,0],mirrorX=false):Vec2=>{const px=(mirrorX?-p[0]:p[0])*t.scaleX,py=p[1]*t.scaleY,c=Math.cos(t.rotation),s=Math.sin(t.rotation);return[px*c-py*s+t.x+offset[0],px*s+py*c+t.y+offset[1]];};
 function emitPart(d:Drafts,c:CharacterDefinition,def:PartDefinition,t:PartTransform={x:0,y:0,scaleX:1,scaleY:1,rotation:0},offset:Vec2=[0,0],mirrorX=false,preserveDirectionLayers?:ReadonlySet<string>){for(const item of def.triangles){const itemMirror=mirrorX&&!preserveDirectionLayers?.has(item.layer);d.tri(item.layer,item.zIndex,item.points.map(p=>apply(p,t,offset,itemMirror)),roleColor(item.colorRole,c,item.shade??0));}}
 export function compileCharacter(c:CharacterDefinition):CompiledPolygonCharacter{
-  const d=new Drafts();emitPart(d,c,BODY_PARTS[c.baseStyle??'female']);emitPart(d,c,HAIR_PARTS[c.hairStyle]);emitPart(d,c,FACE_PARTS[c.faceShape]);
+  const d=new Drafts();emitPart(d,c,BODY_PARTS[c.baseStyle??'female']);emitPart(d,c,OUTFIT_PARTS[c.outfitStyle??'hooded']);emitPart(d,c,FACE_PARTS[c.faceShape]);emitPart(d,c,HAIR_PARTS[c.hairStyle]);
   const eyeT=c.transforms.eyes,eyeSpacing=.29+(eyeT.spacing??0),gazeLayers=c.eyeStyle==='side-glance'?new Set(['iris','pupil','eye-glint']):undefined;
   for(const side of[-1,1]as const)emitPart(d,c,EYE_PARTS[c.eyeStyle],{...eyeT,x:0,y:0,rotation:eyeT.rotation*side},[eyeSpacing*side,.62],side<0,side<0?gazeLayers:undefined);
   const browT=c.transforms.brows,browSpacing=.31+(browT.spacing??0);for(const side of[-1,1]as const)emitPart(d,c,BROW_PARTS[c.browStyle],{...browT,x:0,y:0,rotation:browT.rotation*side},[browSpacing*side,.93],side<0);
