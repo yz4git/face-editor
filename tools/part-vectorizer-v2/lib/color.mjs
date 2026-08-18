@@ -19,8 +19,9 @@ export function medianColor(raw,width,height){
 }
 
 function weightedDominant(shapes,background){
-  const colors=[];for(const shape of shapes){if(deltaE(shape.fill,background)<10)continue;const lab=rgbToLab(shape.fill);if(lab.l>89&&Math.hypot(lab.a,lab.b)<18)continue;let group=colors.find(g=>deltaE(g.color,shape.fill)<18);if(!group){group={color:shape.fill,weight:0};colors.push(group);}group.weight+=shape.area;}
-  colors.sort((a,b)=>b.weight-a.weight);return colors[0]?.color??{r:70,g:50,b:35};
+  const groups=[];for(const shape of shapes){if(deltaE(shape.fill,background)<10)continue;const lab=rgbToLab(shape.fill);if(lab.l>92&&Math.hypot(lab.a,lab.b)<18)continue;let group=groups.find(g=>deltaE(g.color,shape.fill)<18);if(!group){group={color:shape.fill,weight:0,weightedLightness:0,weightedSaturation:0};groups.push(group);}group.weight+=shape.area;group.weightedLightness+=lab.l*shape.area;group.weightedSaturation+=saturation(shape.fill)*shape.area;}
+  for(const group of groups){const lightness=group.weightedLightness/Math.max(1,group.weight),sat=group.weightedSaturation/Math.max(1,group.weight),darknessBoost=1+Math.max(0,88-lightness)/24,saturationBoost=1+Math.min(.45,sat)*.45;group.score=group.weight*darknessBoost*saturationBoost;}
+  groups.sort((a,b)=>b.score-a.score);return groups[0]?.color??{r:70,g:50,b:35};
 }
 
 export function classifyShapes(shapes,{kind,background,roleHints={}}){
