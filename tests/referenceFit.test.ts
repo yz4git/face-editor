@@ -6,7 +6,7 @@ import { REFERENCE_BODY_FIT_METRICS } from '../src/data/referenceBodyGeometry';
 
 describe('sample-derived polygon geometry',()=>{
   it('keeps all ten hairstyles aligned to high-IoU source-sheet geometry',()=>{
-    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);expect(GENERATED_VARIATION_SOURCE.fitRevision).toBe(13);expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
+    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);expect(GENERATED_VARIATION_SOURCE.fitRevision).toBe(14);expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
     for(const [id,hair] of Object.entries(HAIR_PARTS)){
       const key=id as keyof typeof HAIR_REFERENCE_BOUNDS,target=HAIR_REFERENCE_BOUNDS[key],fit=HAIR_REFERENCE_FIT[key];
       expect(hair.tags).toContain('variation-sheet');expect(hair.tags).toContain('face-aligned-v2');expect(hair.triangles.length).toBeGreaterThanOrEqual(fit.triangles);
@@ -17,7 +17,6 @@ describe('sample-derived polygon geometry',()=>{
     for(const id of ['ponytail','side-tail','twin-tail','bun','half-up'] as const)expect(HAIR_PARTS[id].triangles.some(t=>t.layer==='hair-back')).toBe(true);
     for(const id of ['ponytail','side-tail','twin-tail','braid','bun','half-up'] as const)expect(HAIR_PARTS[id].triangles.some(t=>t.layer==='hair-tie')).toBe(true);
   });
-
   it('reconstructs all ten eyes as source-style anime shapes with visible iris color',()=>{
     expect(GENERATED_VARIATION_SOURCE.eyeCount).toBe(10);expect(Object.keys(EYE_PARTS)).toHaveLength(10);
     for(const [id,eye] of Object.entries(EYE_PARTS)){
@@ -29,12 +28,10 @@ describe('sample-derived polygon geometry',()=>{
     const bright=EYE_REFERENCE_BOUNDS.bright,width=bright.maxX-bright.minX,height=bright.maxY-bright.minY;expect(width).toBeGreaterThanOrEqual(.28);expect(height).toBeGreaterThanOrEqual(.40);expect(width/height).toBeLessThan(.75);
     expect(EYE_PARTS.sparkle.triangles.filter(t=>t.layer==='eye-glint').length).toBeGreaterThan(EYE_PARTS.bright.triangles.filter(t=>t.layer==='eye-glint').length);
   });
-
   it('uses the sampled face outline, brow, nose and open smile by default',()=>{
     expect(REFERENCE_FACE_FIT_METRICS.visibleOutlineIoU).toBeGreaterThanOrEqual(.94);expect(REFERENCE_FACE_FIT_METRICS.browMaskIoU).toBeGreaterThanOrEqual(.94);expect(REFERENCE_FACE_FIT_METRICS.noseMaskIoU).toBeGreaterThanOrEqual(.80);expect(REFERENCE_FACE_FIT_METRICS.mouthOuterIoU).toBeGreaterThanOrEqual(.97);expect(REFERENCE_FACE_FIT_METRICS.mouthInnerIoU).toBeGreaterThanOrEqual(.97);
     expect(FACE_PARTS.soft.tags).toContain('reference-fit');expect(BROW_PARTS.soft.tags).toContain('reference-fit');expect(NOSE_PARTS.diamond.tags).toContain('reference-fit');expect(MOUTH_PARTS['smile-open'].tags).toContain('reference-fit');expect(FACE_PARTS.soft.triangles.length).toBeGreaterThanOrEqual(REFERENCE_FACE_OUTLINE.length);
   });
-
   it('uses high-IoU sampled clothing geometry for the female body',()=>{
     for(const metric of Object.values(REFERENCE_BODY_FIT_METRICS))expect(metric.maskIoU).toBeGreaterThanOrEqual(.95);expect(BODY_PARTS.female.tags).toContain('reference-fit');
     const expected=Object.values(REFERENCE_BODY_FIT_METRICS).reduce((sum,metric)=>sum+metric.triangles,0);expect(BODY_PARTS.female.triangles).toHaveLength(expected);
