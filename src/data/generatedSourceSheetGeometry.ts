@@ -1,8 +1,13 @@
-import type {
-  BrowStyleId, EyeStyleId, FaceShapeId, HairStyleId, MouthStyleId, NoseStyleId, OutfitStyleId, Vec2,
-} from '../core/types';
+import type { Vec2 } from '../core/types';
+import { SOURCE_SHEET_GZIP_0 } from './generated/sourceSheetGzip0';
+import { SOURCE_SHEET_GZIP_1 } from './generated/sourceSheetGzip1';
+import { SOURCE_SHEET_GZIP_2A } from './generated/sourceSheetGzip2a';
+import { SOURCE_SHEET_GZIP_2B } from './generated/sourceSheetGzip2b';
+import { SOURCE_SHEET_GZIP_3A } from './generated/sourceSheetGzip3a';
+import { SOURCE_SHEET_GZIP_3B } from './generated/sourceSheetGzip3b';
 
 export type GeneratedSourceRole = 'hair' | 'accent' | 'outline' | 'white' | 'eyes' | 'pupil' | 'highlight' | 'skin' | 'brows' | 'mouth' | 'tongue' | 'jacket' | 'shirt' | 'hood';
+export type GeneratedSourceKind = 'hair' | 'eye' | 'face' | 'brow' | 'nose' | 'mouth' | 'outfit';
 export interface GeneratedSourceTriangle { role: GeneratedSourceRole; shade: number; points: readonly [Vec2,Vec2,Vec2] }
 
 export const GENERATED_SOURCE_SHEET_META = {
@@ -15,9 +20,53 @@ export const GENERATED_SOURCE_SHEET_META = {
   noseCount: 10,
   mouthCount: 10,
   outfitCount: 6,
-  triangles: 18082,
+  triangles: 6581,
+  recordBytes: 14,
+  coordinateScale: 10000,
 } as const;
 
-const ROLES = ["hair", "accent", "outline", "white", "eyes", "pupil", "highlight", "skin", "brows", "mouth", "tongue", "jacket", "shirt", "hood"] as const;
-const INDEX = {"hair:ponytail":[0,362],"hair:braid":[362,347],"hair:bob":[709,321],"hair:half-up":[1030,328],"hair:long":[1358,363],"hair:bun":[1721,327],"hair:short-spike":[2048,329],"hair:side-tail":[2377,325],"hair:wavy":[2702,399],"hair:twin-tail":[3101,281],"eye:bright":[3382,482],"eye:determined":[3864,536],"eye:sharp":[4400,483],"eye:round":[4883,449],"eye:soft":[5332,537],"eye:sleepy":[5869,602],"eye:sparkle":[6471,453],"eye:closed":[6924,464],"eye:narrow":[7388,446],"eye:side-glance":[7834,643],"face:soft":[8477,491],"face:oval":[8968,455],"face:angular":[9423,488],"face:round":[9911,451],"face:square":[10362,496],"face:pointed":[10858,469],"face:long-oval":[11327,450],"face:hex":[11777,493],"face:diamond":[12270,455],"face:tapered":[12725,451],"nose:diamond":[13176,102],"nose:small":[13278,98],"nose:line":[13376,92],"nose:soft":[13468,116],"nose:tall":[13584,95],"nose:tiny":[13679,59],"nose:faceted":[13738,121],"nose:profile":[13859,72],"nose:wide":[13931,93],"nose:button":[14024,112],"mouth:smile-open":[14136,281],"mouth:smile":[14417,157],"mouth:neutral":[14574,6],"mouth:soft-smile":[14580,51],"mouth:o":[14631,32],"mouth:surprised":[14663,89],"mouth:smirk":[14752,194],"mouth:frown":[14946,53],"mouth:wide-open":[14999,295],"mouth:curve":[15294,34],"brow:soft":[15328,94],"brow:straight":[15422,123],"brow:angled":[15545,93],"brow:thin":[15638,85],"brow:bold":[15723,93],"brow:arched":[15816,68],"brow:calm":[15884,83],"brow:raised":[15967,87],"brow:flat":[16054,66],"brow:worried":[16120,73],"outfit:hooded":[16193,334],"outfit:high-collar":[16527,299],"outfit:zip-collar":[16826,312],"outfit:drawstring":[17138,342],"outfit:short-sleeve":[17480,316],"outfit:vest":[17796,286]} as const;
-const PACK = 'AAABAAIAAQABAAIAAQADAAIAAQAEAAIAAQAFAAMAAgAGAAQAAgAHAAQAAgAIAAQAAQAJAAQAAQAKAAQAAQALAAUAAQAMAAUAAQANAAUAAQAOAAYAAQAPAAYAAQAGAAcAAQAHAAcAAQAI' + '';
+const ROLES = ['hair','accent','outline','white','eyes','pupil','highlight','skin','brows','mouth','tongue','jacket','shirt','hood'] as const;
+const INDEX = {"hair:ponytail":[0,106],"hair:braid":[106,109],"hair:bob":[215,102],"hair:half-up":[317,104],"hair:long":[421,110],"hair:bun":[531,101],"hair:short-spike":[632,105],"hair:side-tail":[737,96],"hair:wavy":[833,125],"hair:twin-tail":[958,97],"eye:bright":[1055,217],"eye:determined":[1272,233],"eye:sharp":[1505,226],"eye:round":[1731,214],"eye:soft":[1945,234],"eye:sleepy":[2179,289],"eye:sparkle":[2468,206],"eye:closed":[2674,202],"eye:narrow":[2876,214],"eye:side-glance":[3090,311],"face:soft":[3401,116],"face:oval":[3517,109],"face:angular":[3626,109],"face:round":[3735,109],"face:square":[3844,114],"face:pointed":[3958,105],"face:long-oval":[4063,103],"face:hex":[4166,129],"face:diamond":[4295,121],"face:tapered":[4416,108],"nose:diamond":[4524,36],"nose:small":[4560,33],"nose:line":[4593,29],"nose:soft":[4622,37],"nose:tall":[4659,40],"nose:tiny":[4699,25],"nose:faceted":[4724,40],"nose:profile":[4764,27],"nose:wide":[4791,38],"nose:button":[4829,47],"mouth:smile-open":[4876,123],"mouth:smile":[4999,77],"mouth:neutral":[5076,2],"mouth:soft-smile":[5078,28],"mouth:o":[5106,18],"mouth:surprised":[5124,54],"mouth:smirk":[5178,91],"mouth:frown":[5269,31],"mouth:wide-open":[5300,140],"mouth:curve":[5440,30],"brow:soft":[5470,23],"brow:straight":[5493,31],"brow:angled":[5524,29],"brow:thin":[5553,25],"brow:bold":[5578,25],"brow:arched":[5603,26],"brow:calm":[5629,26],"brow:raised":[5655,28],"brow:flat":[5683,22],"brow:worried":[5705,24],"outfit:hooded":[5729,152],"outfit:high-collar":[5881,130],"outfit:zip-collar":[6011,133],"outfit:drawstring":[6144,156],"outfit:short-sleeve":[6300,141],"outfit:vest":[6441,140]} as const;
+type GeneratedSourceKey = keyof typeof INDEX;
+
+const PACK = SOURCE_SHEET_GZIP_0 + SOURCE_SHEET_GZIP_1 + SOURCE_SHEET_GZIP_2A + SOURCE_SHEET_GZIP_2B + SOURCE_SHEET_GZIP_3A + SOURCE_SHEET_GZIP_3B;
+const RECORD_BYTES = GENERATED_SOURCE_SHEET_META.recordBytes;
+const COORD_SCALE = GENERATED_SOURCE_SHEET_META.coordinateScale;
+
+function decodeBase64(value:string):Uint8Array {
+  const binary=atob(value),out=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)out[i]=binary.charCodeAt(i);
+  return out;
+}
+async function inflateGzip(value:string):Promise<Uint8Array>{
+  if(typeof DecompressionStream==='undefined')throw new Error('This browser does not support gzip DecompressionStream required by generated polygon assets.');
+  const compressed=decodeBase64(value);
+  const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+const raw=await inflateGzip(PACK);
+const expectedBytes=GENERATED_SOURCE_SHEET_META.triangles*RECORD_BYTES;
+if(raw.byteLength!==expectedBytes)throw new Error(`Generated source-sheet geometry length mismatch: ${raw.byteLength} !== ${expectedBytes}`);
+const view=new DataView(raw.buffer,raw.byteOffset,raw.byteLength);
+
+function decodeTriangle(recordIndex:number):GeneratedSourceTriangle{
+  const off=recordIndex*RECORD_BYTES;
+  const point=(index:number):Vec2=>[view.getInt16(off+index*4,true)/COORD_SCALE,view.getInt16(off+index*4+2,true)/COORD_SCALE];
+  const roleIndex=view.getUint8(off+13),role=ROLES[roleIndex];
+  if(!role)throw new Error(`Unknown generated source role ${roleIndex} at triangle ${recordIndex}`);
+  return{points:[point(0),point(1),point(2)],shade:view.getInt8(off+12),role};
+}
+
+const PARTS={} as Record<GeneratedSourceKey,readonly GeneratedSourceTriangle[]>;
+for(const [key,[start,count]] of Object.entries(INDEX) as [GeneratedSourceKey,readonly [number,number]][]){
+  PARTS[key]=Array.from({length:count},(_,i)=>decodeTriangle(start+i));
+}
+
+export function generatedSourceTriangles(kind:GeneratedSourceKind,id:string):readonly GeneratedSourceTriangle[]{
+  const key=`${kind}:${id}` as GeneratedSourceKey,triangles=PARTS[key];
+  if(!triangles)throw new Error(`No generated source-sheet geometry for ${key}`);
+  return triangles;
+}
+export function generatedSourceTriangleCount(kind:GeneratedSourceKind,id:string):number{return generatedSourceTriangles(kind,id).length;}
+export const GENERATED_SOURCE_KEYS=Object.freeze(Object.keys(INDEX) as GeneratedSourceKey[]);
