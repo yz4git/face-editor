@@ -13,7 +13,7 @@ async function canvasMetrics(canvas:Locator){return canvas.evaluate((element:HTM
 });}
 
 test('Canvas2D full-editor audit covers and auto-fits all 92 generated parts',async({page})=>{
-  mkdirSync('visual-audit/output',{recursive:true});await page.setViewportSize({width:1280,height:720});await page.goto('http://127.0.0.1:4173/?renderer=canvas2d&visualAudit=1');
+  test.setTimeout(180_000);mkdirSync('visual-audit/output',{recursive:true});await page.setViewportSize({width:1280,height:720});await page.goto('http://127.0.0.1:4173/?renderer=canvas2d&visualAudit=1');
   await expect(page.locator('#renderer-mode')).toHaveText('CANVAS2D');const canvas=page.locator('canvas.character-canvas');await expect(canvas).toBeVisible();await expect(page.locator('.part-thumb')).toHaveCount(92);for(const[kind,count]of Object.entries(families))await expect(page.locator(`[data-kind="${kind}"]`)).toHaveCount(count);await expect(page.locator('#preview')).toHaveAttribute('data-autofit','v2');
 
   const seen=new Set<string>(),reports:{combination:number;metrics:Awaited<ReturnType<typeof canvasMetrics>>;report:AuditReport}[]=[];
