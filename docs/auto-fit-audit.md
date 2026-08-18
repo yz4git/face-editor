@@ -41,7 +41,7 @@ The Canvas2D Visual Audit additionally checks non-empty rendering, framing/clipp
 
 ## Exhaustive pairwise sweep
 
-`autoFitSweep.ts` deterministically creates character definitions that cover every value-pair across the 11 selectable families. There are 92 selectable parts; the sweep proves all part IDs are seen and that every cross-family pair obligation is covered. Other families are filled with a stable hash so each pair is exercised among varied neighbors. The browser only loads and runs this sweep when `visualAudit=1`; `sweep=0` keeps audit rendering enabled without rerunning the exhaustive sweep.
+`autoFitSweep.ts` deterministically creates character definitions that cover every value-pair across the 11 selectable families. There are 92 selectable parts; the sweep proves all part IDs are seen and that every cross-family pair obligation is covered. Other families are filled with a stable hash so each pair is exercised among varied neighbors. The browser only loads and runs this sweep when `visualAudit=1`; `sweep=0` keeps audit rendering enabled without rerunning the exhaustive sweep. Production editor sessions never import the exhaustive sweep module.
 
 ## Screen audit
 
