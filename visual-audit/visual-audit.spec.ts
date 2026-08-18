@@ -1,52 +1,35 @@
 import { test, expect } from '@playwright/test';
 
-test('canvas2d fallback visually audits generated source-sheet editor parts',async({page})=>{
+type Family='outfit'|'hood'|'shirt'|'strap'|'accent'|'hair'|'face'|'eye'|'brow'|'nose'|'mouth';
+const families:Record<Family,number>={outfit:6,hood:6,shirt:6,strap:6,accent:8,hair:10,face:10,eye:10,brow:10,nose:10,mouth:10};
+
+async function selectIndex(page:Parameters<typeof test>[0] extends never?never:any,kind:Family,index:number){await page.locator(`[data-kind="${kind}"]`).nth(index%families[kind]).click();}
+
+async function canvasMetrics(canvas:any){return canvas.evaluate((element:HTMLCanvasElement)=>{
+  const ctx=element.getContext('2d');if(!ctx)return{painted:0,minX:0,minY:0,maxX:0,maxY:0,width:element.width,height:element.height};
+  const{width,height}=element,data=ctx.getImageData(0,0,width,height).data;let painted=0,minX=width,minY=height,maxX=-1,maxY=-1;
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){if(data[(y*width+x)*4+3]===0)continue;painted++;minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}
+  return{painted,minX,minY,maxX,maxY,width,height};
+});}
+
+test('Canvas2D full-editor audit covers and auto-fits all 92 generated parts',async({page})=>{
   await page.setViewportSize({width:1280,height:720});await page.goto('http://127.0.0.1:4173/?renderer=canvas2d&visualAudit=1');
   await expect(page.locator('#renderer-mode')).toHaveText('CANVAS2D');const canvas=page.locator('canvas.character-canvas');await expect(canvas).toBeVisible();
-  await expect(page.locator('.part-thumb')).toHaveCount(92);
-  const families={outfit:6,hood:6,shirt:6,strap:6,accent:8,hair:10,face:10,eye:10,brow:10,nose:10,mouth:10} as const;
-  for(const[kind,count]of Object.entries(families))await expect(page.locator(`[data-kind="${kind}"]`)).toHaveCount(count);
-  const painted=await canvas.evaluate(element=>{const c=element as HTMLCanvasElement,ctx=c.getContext('2d');if(!ctx)return 0;const d=ctx.getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<d.length;i+=4)if(d[i]>0)n++;return n;});expect(painted).toBeGreaterThan(1000);
-  await page.screenshot({path:'visual-audit/output/generated-source-default.png',fullPage:true});
+  await expect(page.locator('.part-thumb')).toHaveCount(92);for(const[kind,count]of Object.entries(families))await expect(page.locator(`[data-kind="${kind}"]`)).toHaveCount(count);
+  await expect(page.locator('#preview')).toHaveAttribute('data-autofit','v2');
 
-  const hair=page.locator('[data-kind="hair"]'),eyes=page.locator('[data-kind="eye"]');
-  for(let i=0;i<10;i++){await hair.nth(i).click();await canvas.screenshot({path:`visual-audit/output/generated-hair-${String(i+1).padStart(2,'0')}.png`});}
-  await hair.nth(0).click();
-  for(let i=0;i<10;i++){await eyes.nth(i).click();await canvas.screenshot({path:`visual-audit/output/generated-eye-${String(i+1).padStart(2,'0')}.png`});}
+  const seen=new Set<string>();
+  for(let i=0;i<10;i++){
+    for(const kind of Object.keys(families) as Family[])await selectIndex(page,kind,i);
+    const metrics=await canvasMetrics(canvas);expect(metrics.painted).toBeGreaterThan(1000);expect(metrics.maxX-metrics.minX).toBeGreaterThan(metrics.width*.18);expect(metrics.maxY-metrics.minY).toBeGreaterThan(metrics.height*.35);
+    expect(metrics.minX).toBeGreaterThanOrEqual(0);expect(metrics.minY).toBeGreaterThanOrEqual(0);expect(metrics.maxX).toBeLessThan(metrics.width);expect(metrics.maxY).toBeLessThan(metrics.height);
+    const report=await page.evaluate(()=>((window as Window&{__FACE_EDITOR_AUTOFIT_REPORT__?:{version:number;entries:{id:string;family:string;score:number}[]}}).__FACE_EDITOR_AUTOFIT_REPORT__));
+    expect(report?.version).toBe(2);expect(report?.entries).toHaveLength(13);
+    for(const entry of report?.entries??[]){expect(Number.isFinite(entry.score)).toBe(true);seen.add(`${entry.family}:${entry.id.replace(/:(left|right)$/,'')}`);}
+    const n=String(i+1).padStart(2,'0');await canvas.screenshot({path:`visual-audit/output/autofit-preview-${n}.png`});await page.screenshot({path:`visual-audit/output/autofit-editor-${n}.png`,fullPage:true});
+  }
+  expect(seen.size).toBe(92);
 
-  await page.locator('[data-kind="outfit"][data-id="vest"]').click();
-  await page.locator('[data-kind="hood"][data-id="wing"]').click();
-  await page.locator('[data-kind="shirt"][data-id="tank"]').click();
-  await page.locator('[data-kind="strap"][data-id="y-harness"]').click();
-  await page.locator('[data-kind="accent"][data-id="chevron"]').click();
-  await page.locator('[data-kind="hair"][data-id="wavy"]').click();
-  await page.locator('[data-kind="face"][data-id="diamond"]').click();
-  await page.locator('[data-kind="eye"][data-id="closed"]').click();
-  await page.locator('[data-kind="brow"][data-id="worried"]').click();
-  await page.locator('[data-kind="nose"][data-id="button"]').click();
-  await page.locator('[data-kind="mouth"][data-id="smirk"]').click();
-  await page.screenshot({path:'visual-audit/output/generated-source-variant-a.png',fullPage:true});
-
-  await page.locator('[data-kind="outfit"][data-id="short-sleeve"]').click();
-  await page.locator('[data-kind="hood"][data-id="drawstring"]').click();
-  await page.locator('[data-kind="shirt"][data-id="turtleneck"]').click();
-  await page.locator('[data-kind="strap"][data-id="double-pouch"]').click();
-  await page.locator('[data-kind="accent"][data-id="diamond"]').click();
-  await page.locator('[data-kind="hair"][data-id="side-tail"]').click();
-  await page.locator('[data-kind="face"][data-id="tapered"]').click();
-  await page.locator('[data-kind="eye"][data-id="narrow"]').click();
-  await page.locator('[data-kind="brow"][data-id="arched"]').click();
-  await page.locator('[data-kind="nose"][data-id="faceted"]').click();
-  await page.locator('[data-kind="mouth"][data-id="wide-open"]').click();
-  await page.screenshot({path:'visual-audit/output/generated-source-variant-b.png',fullPage:true});
-
-  const modular={
-    hood:['folded','drawstring','sharp','high','wide','wing'],
-    shirt:['tee','long-sleeve','tank','three-quarter','turtleneck','sleeveless-high'],
-    strap:['simple','padded','single-pouch','double-pouch','cross','y-harness'],
-    accent:['diamond','long-strip','point-strip','corner','chevron','slash','taper','triangle'],
-  } as const;
-  for(const[kind,ids]of Object.entries(modular))for(const id of ids){await page.locator(`[data-kind="${kind}"][data-id="${id}"]`).click();await canvas.screenshot({path:`visual-audit/output/modular-${kind}-${id}.png`});}
-
-  await page.locator('[data-adjust="eyes"]').click();const slider=page.locator('input[data-transform-key="eyes"][data-transform-prop="spacing"]');await slider.evaluate(el=>{const input=el as HTMLInputElement;input.value='0.08';input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));});await expect(page.locator('.adjust-panel')).toBeVisible();
+  await page.locator('[data-adjust="eyes"]').click();const slider=page.locator('input[data-transform-key="eyes"][data-transform-prop="spacing"]');const before=await page.locator('#preview').getAttribute('data-autofit-score');
+  await slider.evaluate((el:HTMLInputElement)=>{el.value='0.08';el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));});await expect(page.locator('.adjust-panel')).toBeVisible();await expect(page.locator('#preview')).toHaveAttribute('data-autofit','v2');expect(await page.locator('#preview').getAttribute('data-autofit-score')).toBe(before);
 });
