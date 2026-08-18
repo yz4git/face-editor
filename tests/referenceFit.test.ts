@@ -6,7 +6,7 @@ import { REFERENCE_BODY_FIT_METRICS } from '../src/data/referenceBodyGeometry';
 
 describe('sample-derived polygon geometry',()=>{
   it('keeps all ten hairstyles aligned to high-IoU source-sheet geometry',()=>{
-    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);expect(GENERATED_VARIATION_SOURCE.fitRevision).toBe(11);expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
+    expect(GENERATED_VARIATION_SOURCE.hairCount).toBe(10);expect(GENERATED_VARIATION_SOURCE.fitRevision).toBe(12);expect(Object.keys(HAIR_PARTS)).toHaveLength(10);
     for(const [id,hair] of Object.entries(HAIR_PARTS)){
       const key=id as keyof typeof HAIR_REFERENCE_BOUNDS,target=HAIR_REFERENCE_BOUNDS[key],fit=HAIR_REFERENCE_FIT[key];
       expect(hair.tags).toContain('variation-sheet');expect(hair.tags).toContain('face-aligned-v2');expect(hair.triangles.length).toBeGreaterThanOrEqual(fit.triangles);
