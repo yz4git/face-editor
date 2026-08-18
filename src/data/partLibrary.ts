@@ -1,8 +1,9 @@
 import type {
-  BrowStyleId, CharacterBaseId, ColorRole, EyeStyleId, FaceShapeId, HairStyleId,
-  MouthStyleId, NoseStyleId, OutfitStyleId, PartCategory, PartDefinition, PartTriangleDefinition, Vec2,
+  AccentStyleId, BrowStyleId, CharacterBaseId, ColorRole, EyeStyleId, FaceShapeId, HairStyleId, HoodStyleId,
+  MouthStyleId, NoseStyleId, OutfitStyleId, PartCategory, PartDefinition, PartTriangleDefinition, ShirtStyleId, StrapStyleId, Vec2,
 } from '../core/types';
 import { generatedSourceTriangles, type GeneratedSourceKind, type GeneratedSourceRole } from './generatedSourceSheetGeometry';
+import { generatedOutfitComponentTriangles, type OutfitComponentRole } from './outfitComponentGeometry';
 
 type TriSpec = Omit<PartTriangleDefinition,'points'> & { points: readonly [Vec2,Vec2,Vec2] };
 const tri=(layer:string,zIndex:number,colorRole:ColorRole,a:Vec2,b:Vec2,c:Vec2,shade=0):TriSpec=>({layer,zIndex,colorRole,shade,points:[a,b,c]});
@@ -53,25 +54,46 @@ function styleFor(kind:GeneratedSourceKind,role:GeneratedSourceRole):readonly [s
   }
   throw new Error(`Unsupported generated source role ${kind}:${role}`);
 }
+function componentStyleFor(role:OutfitComponentRole):readonly [string,number,ColorRole]{
+  if(role==='hood')return['hood',6,'hood'];
+  if(role==='shirt')return['shirt',1,'shirt'];
+  if(role==='strap')return['strap',7,'strap'];
+  if(role==='metal')return['strap-metal',8,'metal'];
+  return['accent',8,'accent'];
+}
 function generatedPart<T extends string>(kind:GeneratedSourceKind,id:T,label:string,category:PartCategory):PartDefinition<T>{
   const geometry:TriSpec[]=generatedSourceTriangles(kind,id).map(({role,shade,points})=>{
     const[layer,zIndex,colorRole]=styleFor(kind,role);return tri(layer,zIndex,colorRole,points[0],points[1],points[2],shade);
   });
   return part(id,label,category,geometry,[id,kind,'generated-source-sheet','vectorized-v2']);
 }
+function generatedComponentPart<T extends string>(kind:'hood'|'shirt'|'strap'|'accent',id:T,label:string):PartDefinition<T>{
+  const geometry:TriSpec[]=generatedOutfitComponentTriangles(kind,id).map(({role,shade,points})=>{
+    const[layer,zIndex,colorRole]=componentStyleFor(role);return tri(layer,zIndex,colorRole,points[0],points[1],points[2],shade);
+  });
+  return part(id,label,'outfit',geometry,[id,kind,'generated-source-sheet','outfit-component','vectorized-v2']);
+}
 
 const hairLabels:Record<HairStyleId,string>={ponytail:'High ponytail',braid:'Twin braids',bob:'Short bob','half-up':'Spiky half-up',long:'Long headband',bun:'Twin buns','short-spike':'Layered short','side-tail':'Side ponytail',wavy:'Long curls','twin-tail':'Hair clip short'};
 const eyeLabels:Record<EyeStyleId,string>={bright:'Warm brown',determined:'Amber',sharp:'Deep brown',round:'Mahogany',soft:'Light brown',sleepy:'Olive',sparkle:'Deep blue',closed:'Violet',narrow:'Teal','side-glance':'Steel gray'};
-const faceLabels:Record<FaceShapeId,string>={soft:'Soft oval',oval:'Soft square',angular:'Tapered',round:'Round',square:'Tall square',pointed:'Pointed', 'long-oval':'Long oval',hex:'Hex jaw',diamond:'Diamond',tapered:'Compact tapered'};
+const faceLabels:Record<FaceShapeId,string>={soft:'Soft oval',oval:'Soft square',angular:'Tapered',round:'Round',square:'Tall square',pointed:'Pointed','long-oval':'Long oval',hex:'Hex jaw',diamond:'Diamond',tapered:'Compact tapered'};
 const browLabels:Record<BrowStyleId,string>={soft:'Soft arch',straight:'Strong arch',angled:'Angled',thin:'Thin soft',bold:'Bold',arched:'Sharp angle',calm:'Calm',raised:'Raised',flat:'Flat',worried:'Worried'};
 const noseLabels:Record<NoseStyleId,string>={diamond:'Diamond',small:'Slim',line:'Line',soft:'Soft',tall:'Tall',tiny:'Tiny',faceted:'Faceted',profile:'Profile',wide:'Wide',button:'Button'};
 const mouthLabels:Record<MouthStyleId,string>={'smile-open':'Open smile',smile:'Small smile',neutral:'Neutral','soft-smile':'Soft smile',o:'O',surprised:'Surprised',smirk:'Smirk',frown:'Frown','wide-open':'Wide open',curve:'Curve'};
 const outfitLabels:Record<OutfitStyleId,string>={hooded:'Hooded jacket','high-collar':'High collar','zip-collar':'Zip collar',drawstring:'Drawstring hoodie','short-sleeve':'Short sleeve',vest:'Sleeveless vest'};
+const hoodLabels:Record<HoodStyleId,string>={folded:'Folded hood',drawstring:'Drawstring hood',sharp:'Sharp collar',high:'High collar',wide:'Wide collar',wing:'Wing collar'};
+const shirtLabels:Record<ShirtStyleId,string>={tee:'T-shirt','long-sleeve':'Long sleeve',tank:'Tank','three-quarter':'3/4 sleeve',turtleneck:'Turtleneck','sleeveless-high':'Sleeveless high neck'};
+const strapLabels:Record<StrapStyleId,string>={simple:'Simple strap',padded:'Padded strap','single-pouch':'Single pouch','double-pouch':'Double pouch',cross:'Cross harness','y-harness':'Y harness'};
+const accentLabels:Record<AccentStyleId,string>={diamond:'Diamond','long-strip':'Long strip','point-strip':'Point strip',corner:'Corner',chevron:'Chevron',slash:'Slash',taper:'Taper',triangle:'Triangle'};
 
 export const BODY_PARTS:Record<CharacterBaseId,PartDefinition<CharacterBaseId>>={female:part('female','Female base','body',[],['female','base','generated-outfit-base']),male:proceduralMaleBody()};
 export const OUTFIT_PARTS:Record<OutfitStyleId,PartDefinition<OutfitStyleId>>={
   hooded:generatedPart('outfit','hooded',outfitLabels.hooded,'outfit'),'high-collar':generatedPart('outfit','high-collar',outfitLabels['high-collar'],'outfit'),'zip-collar':generatedPart('outfit','zip-collar',outfitLabels['zip-collar'],'outfit'),drawstring:generatedPart('outfit','drawstring',outfitLabels.drawstring,'outfit'),'short-sleeve':generatedPart('outfit','short-sleeve',outfitLabels['short-sleeve'],'outfit'),vest:generatedPart('outfit','vest',outfitLabels.vest,'outfit'),
 };
+export const HOOD_PARTS:Record<HoodStyleId,PartDefinition<HoodStyleId>>={folded:generatedComponentPart('hood','folded',hoodLabels.folded),drawstring:generatedComponentPart('hood','drawstring',hoodLabels.drawstring),sharp:generatedComponentPart('hood','sharp',hoodLabels.sharp),high:generatedComponentPart('hood','high',hoodLabels.high),wide:generatedComponentPart('hood','wide',hoodLabels.wide),wing:generatedComponentPart('hood','wing',hoodLabels.wing)};
+export const SHIRT_PARTS:Record<ShirtStyleId,PartDefinition<ShirtStyleId>>={tee:generatedComponentPart('shirt','tee',shirtLabels.tee),'long-sleeve':generatedComponentPart('shirt','long-sleeve',shirtLabels['long-sleeve']),tank:generatedComponentPart('shirt','tank',shirtLabels.tank),'three-quarter':generatedComponentPart('shirt','three-quarter',shirtLabels['three-quarter']),turtleneck:generatedComponentPart('shirt','turtleneck',shirtLabels.turtleneck),'sleeveless-high':generatedComponentPart('shirt','sleeveless-high',shirtLabels['sleeveless-high'])};
+export const STRAP_PARTS:Record<StrapStyleId,PartDefinition<StrapStyleId>>={simple:generatedComponentPart('strap','simple',strapLabels.simple),padded:generatedComponentPart('strap','padded',strapLabels.padded),'single-pouch':generatedComponentPart('strap','single-pouch',strapLabels['single-pouch']),'double-pouch':generatedComponentPart('strap','double-pouch',strapLabels['double-pouch']),cross:generatedComponentPart('strap','cross',strapLabels.cross),'y-harness':generatedComponentPart('strap','y-harness',strapLabels['y-harness'])};
+export const ACCENT_PARTS:Record<AccentStyleId,PartDefinition<AccentStyleId>>={diamond:generatedComponentPart('accent','diamond',accentLabels.diamond),'long-strip':generatedComponentPart('accent','long-strip',accentLabels['long-strip']),'point-strip':generatedComponentPart('accent','point-strip',accentLabels['point-strip']),corner:generatedComponentPart('accent','corner',accentLabels.corner),chevron:generatedComponentPart('accent','chevron',accentLabels.chevron),slash:generatedComponentPart('accent','slash',accentLabels.slash),taper:generatedComponentPart('accent','taper',accentLabels.taper),triangle:generatedComponentPart('accent','triangle',accentLabels.triangle)};
 export const HAIR_PARTS:Record<HairStyleId,PartDefinition<HairStyleId>>={ponytail:generatedPart('hair','ponytail',hairLabels.ponytail,'hair'),braid:generatedPart('hair','braid',hairLabels.braid,'hair'),bob:generatedPart('hair','bob',hairLabels.bob,'hair'),'half-up':generatedPart('hair','half-up',hairLabels['half-up'],'hair'),long:generatedPart('hair','long',hairLabels.long,'hair'),bun:generatedPart('hair','bun',hairLabels.bun,'hair'),'short-spike':generatedPart('hair','short-spike',hairLabels['short-spike'],'hair'),'side-tail':generatedPart('hair','side-tail',hairLabels['side-tail'],'hair'),wavy:generatedPart('hair','wavy',hairLabels.wavy,'hair'),'twin-tail':generatedPart('hair','twin-tail',hairLabels['twin-tail'],'hair')};
 export const FACE_PARTS:Record<FaceShapeId,PartDefinition<FaceShapeId>>={soft:generatedPart('face','soft',faceLabels.soft,'face'),oval:generatedPart('face','oval',faceLabels.oval,'face'),angular:generatedPart('face','angular',faceLabels.angular,'face'),round:generatedPart('face','round',faceLabels.round,'face'),square:generatedPart('face','square',faceLabels.square,'face'),pointed:generatedPart('face','pointed',faceLabels.pointed,'face'),'long-oval':generatedPart('face','long-oval',faceLabels['long-oval'],'face'),hex:generatedPart('face','hex',faceLabels.hex,'face'),diamond:generatedPart('face','diamond',faceLabels.diamond,'face'),tapered:generatedPart('face','tapered',faceLabels.tapered,'face')};
 export const EYE_PARTS:Record<EyeStyleId,PartDefinition<EyeStyleId>>={bright:generatedPart('eye','bright',eyeLabels.bright,'eye'),determined:generatedPart('eye','determined',eyeLabels.determined,'eye'),sharp:generatedPart('eye','sharp',eyeLabels.sharp,'eye'),round:generatedPart('eye','round',eyeLabels.round,'eye'),soft:generatedPart('eye','soft',eyeLabels.soft,'eye'),sleepy:generatedPart('eye','sleepy',eyeLabels.sleepy,'eye'),sparkle:generatedPart('eye','sparkle',eyeLabels.sparkle,'eye'),closed:generatedPart('eye','closed',eyeLabels.closed,'eye'),narrow:generatedPart('eye','narrow',eyeLabels.narrow,'eye'),'side-glance':generatedPart('eye','side-glance',eyeLabels['side-glance'],'eye')};
@@ -79,5 +101,5 @@ export const BROW_PARTS:Record<BrowStyleId,PartDefinition<BrowStyleId>>={soft:ge
 export const NOSE_PARTS:Record<NoseStyleId,PartDefinition<NoseStyleId>>={diamond:generatedPart('nose','diamond',noseLabels.diamond,'nose'),small:generatedPart('nose','small',noseLabels.small,'nose'),line:generatedPart('nose','line',noseLabels.line,'nose'),soft:generatedPart('nose','soft',noseLabels.soft,'nose'),tall:generatedPart('nose','tall',noseLabels.tall,'nose'),tiny:generatedPart('nose','tiny',noseLabels.tiny,'nose'),faceted:generatedPart('nose','faceted',noseLabels.faceted,'nose'),profile:generatedPart('nose','profile',noseLabels.profile,'nose'),wide:generatedPart('nose','wide',noseLabels.wide,'nose'),button:generatedPart('nose','button',noseLabels.button,'nose')};
 export const MOUTH_PARTS:Record<MouthStyleId,PartDefinition<MouthStyleId>>={'smile-open':generatedPart('mouth','smile-open',mouthLabels['smile-open'],'mouth'),smile:generatedPart('mouth','smile',mouthLabels.smile,'mouth'),neutral:generatedPart('mouth','neutral',mouthLabels.neutral,'mouth'),'soft-smile':generatedPart('mouth','soft-smile',mouthLabels['soft-smile'],'mouth'),o:generatedPart('mouth','o',mouthLabels.o,'mouth'),surprised:generatedPart('mouth','surprised',mouthLabels.surprised,'mouth'),smirk:generatedPart('mouth','smirk',mouthLabels.smirk,'mouth'),frown:generatedPart('mouth','frown',mouthLabels.frown,'mouth'),'wide-open':generatedPart('mouth','wide-open',mouthLabels['wide-open'],'mouth'),curve:generatedPart('mouth','curve',mouthLabels.curve,'mouth')};
 
-export const PART_LIBRARY={body:BODY_PARTS,outfit:OUTFIT_PARTS,hair:HAIR_PARTS,face:FACE_PARTS,eye:EYE_PARTS,brow:BROW_PARTS,nose:NOSE_PARTS,mouth:MOUTH_PARTS} as const;
-export function allPartDefinitions():PartDefinition[]{return[...Object.values(BODY_PARTS),...Object.values(OUTFIT_PARTS),...Object.values(HAIR_PARTS),...Object.values(FACE_PARTS),...Object.values(EYE_PARTS),...Object.values(BROW_PARTS),...Object.values(NOSE_PARTS),...Object.values(MOUTH_PARTS)];}
+export const PART_LIBRARY={body:BODY_PARTS,outfit:OUTFIT_PARTS,hood:HOOD_PARTS,shirt:SHIRT_PARTS,strap:STRAP_PARTS,accent:ACCENT_PARTS,hair:HAIR_PARTS,face:FACE_PARTS,eye:EYE_PARTS,brow:BROW_PARTS,nose:NOSE_PARTS,mouth:MOUTH_PARTS} as const;
+export function allPartDefinitions():PartDefinition[]{return[...Object.values(BODY_PARTS),...Object.values(OUTFIT_PARTS),...Object.values(HOOD_PARTS),...Object.values(SHIRT_PARTS),...Object.values(STRAP_PARTS),...Object.values(ACCENT_PARTS),...Object.values(HAIR_PARTS),...Object.values(FACE_PARTS),...Object.values(EYE_PARTS),...Object.values(BROW_PARTS),...Object.values(NOSE_PARTS),...Object.values(MOUTH_PARTS)];}
