@@ -61,9 +61,14 @@ function facePart(id:FaceShapeId,label:string,w:number,jaw:number,chin:number):P
 }
 function referenceSoftFacePart():PartDefinition<FaceShapeId>{
   const center:Vec2=[0,.58],ts:TriSpec[]=[];
+  const border:Vec2[]=REFERENCE_FACE_OUTLINE.map(([x,y])=>[x*1.028,.58+(y-.58)*1.028]);
+  ts.push(...fan('face-outline',4,'pupil',border,[0]));
   for(let i=0;i<REFERENCE_FACE_OUTLINE.length;i++)ts.push(tri('face',5,'skin',center,REFERENCE_FACE_OUTLINE[i],REFERENCE_FACE_OUTLINE[(i+1)%REFERENCE_FACE_OUTLINE.length],REFERENCE_FACE_SHADES[i]??0));
-  ts.push(tri('ears',5,'skin',[-.52,.78],[-.65,.66],[-.51,.43],-4),tri('ears',5,'skin',[.52,.78],[.66,.66],[.51,.43],-7),...quad('neck',4,'skin',[-.22,.02],[.22,.02],[.2,-.42],[-.2,-.42],-5,-10));
-  return part('soft','Soft','face',ts,['face','reference-fit']);
+  const earOuter:Vec2[]=[[.46,.88],[.68,.79],[.70,.58],[.61,.39],[.53,.34]];
+  const earInner:Vec2[]=[[.49,.83],[.63,.75],[.64,.59],[.58,.44],[.53,.40]];
+  ts.push(...fan('ear-outline',4,'pupil',earOuter,[0]),...fan('ears',5,'skin',earInner,[-2,-4,-7,-5,-2]));
+  ts.push(...quad('neck-outline',3,'pupil',[-.20,.08],[.20,.06],[.25,-.39],[-.27,-.45]),...quad('neck',4,'skin',[-.16,.06],[.16,.04],[.20,-.35],[-.23,-.40],-5,-10));
+  return part('soft','Soft','face',ts,['face','reference-fit','outlined']);
 }
 
 const hairBaseFront:TriSpec[]=[
@@ -95,8 +100,6 @@ function eyePart(id:EyeStyleId,label:string,w:number,h:number,tilt=0):PartDefini
 }
 const centroid=(points:readonly Vec2[]):Vec2=>[points.reduce((s,p)=>s+p[0],0)/points.length,points.reduce((s,p)=>s+p[1],0)/points.length];
 const scaleAround=(points:readonly Vec2[],scaleX:number,scaleY:number):Vec2[]=>{const[cx,cy]=centroid(points);return points.map(([x,y])=>[cx+(x-cx)*scaleX,cy+(y-cy)*scaleY]);};
-// Coordinates measured from the supplied right-eye crop after Lab skin rejection and intensity segmentation.
-// Outer eye mask IoU against the sample is 0.9519.
 const referenceEyeOutline:readonly Vec2[]=[[.1663,.1271],[.1663,.0031],[.1167,-.1023],[.0671,-.1705],[-.0445,-.1829],[-.1065,-.1581],[-.1313,-.1085],[-.1871,.0899],[-.1561,.1457],[.1415,.1457]];
 const referenceIrisOutline:readonly Vec2[]=[[-.0445,.1333],[-.0755,.0651],[-.0755,-.0527],[-.0321,-.1643],[-.0445,-.1767],[.0485,-.1767],[.0981,-.0775],[.0919,.0775],[.0547,.1333]];
 const referencePupil:readonly Vec2[]=[[.0609,.0589],[.0175,.0589],[-.0073,.0279],[-.0259,.0279],[-.0259,-.0527],[.0175,-.0899],[.0609,-.0465]];
@@ -113,7 +116,10 @@ function referenceBrightEyePart():PartDefinition<EyeStyleId>{
   ],['eye','reference-fit']);
 }
 function browPart(id:BrowStyleId,label:string,w:number,h:number,angle=0):PartDefinition<BrowStyleId>{return part(id,label,'brow',[...quad('brows',12,'brows',[-w/2,0],[w/2,angle],[w/2,angle+h],[-w/2,h],0,8)],['brow']);}
-function referenceSoftBrowPart():PartDefinition<BrowStyleId>{return part('soft','Soft','brow',fan('brows',12,'brows',REFERENCE_SOFT_BROW,[0,2,4,2,0,-2,0,1]),['brow','reference-fit']);}
+function referenceSoftBrowPart():PartDefinition<BrowStyleId>{
+  const points:Vec2[]=REFERENCE_SOFT_BROW.map(([x,y])=>[x*1.16,y*1.12]);
+  return part('soft','Soft','brow',fan('brows',12,'brows',points,[0,2,4,2,0,-2,0,1]),['brow','reference-fit']);
+}
 function nosePart(id:NoseStyleId,label:string):PartDefinition<NoseStyleId>{if(id==='line')return part(id,label,'nose',[tri('nose',12,'skin',[-.025,.06],[.02,.16],[.035,.02],-24)],['nose']);const size=id==='small'?.045:id==='soft'?.06:.075;return part(id,label,'nose',[tri('nose',12,'skin',[0,.14],[-size,-.02],[size*.25,.01],-24),tri('nose',12,'skin',[0,.14],[size*.25,.01],[size,.03],-16)],['nose']);}
 function referenceNosePart():PartDefinition<NoseStyleId>{return part('diamond','Diamond','nose',fan('nose',12,'skin',REFERENCE_SMALL_NOSE,[-22,-18,-24,-16,-20]),['nose','reference-fit']);}
 function mouthPart(id:MouthStyleId,label:string):PartDefinition<MouthStyleId>{if(id==='neutral')return part(id,label,'mouth',[...quad('mouth',13,'mouth',[-.16,.01],[.16,.01],[.16,-.008],[-.16,-.008])],['mouth']);if(id==='o')return part(id,label,'mouth',[...quad('mouth',13,'mouth',[-.07,.07],[.07,.07],[.07,-.07],[-.07,-.07],0,10)],['mouth']);const w=id==='soft-smile'?.16:.24;return part(id,label,'mouth',[tri('mouth',13,'mouth',[-w,.01],[0,-.06],[w,.01])],['mouth']);}
