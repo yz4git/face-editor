@@ -3,11 +3,12 @@ import { compileCharacter, getCharacterAutoFitReport } from '../src/core/compile
 import { DEFAULT_CHARACTER } from '../src/data/parts';
 import { ACCENT_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, HOOD_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS, SHIRT_PARTS, STRAP_PARTS } from '../src/data/partLibrary';
 import type { AccentStyleId, BrowStyleId, EyeStyleId, FaceShapeId, HairStyleId, HoodStyleId, MouthStyleId, NoseStyleId, OutfitStyleId, PartDefinition, ShirtStyleId, StrapStyleId } from '../src/core/types';
-import { coverageBoundsForPart, fitBoundsToRect, LAYER_Z } from '../src/core/partAutoFit';
+import { coverageBoundsForPart, fitBoundsToRect, LAYER_Z, REFERENCE_ANATOMY_TARGETS } from '../src/core/partAutoFit';
 
 const ids=<T extends string>(record:Record<T,unknown>)=>Object.keys(record) as T[];
 const finiteTransform=(value:{x:number;y:number;scaleX:number;scaleY:number;rotation:number})=>[value.x,value.y,value.scaleX,value.scaleY,value.rotation].every(Number.isFinite)&&value.scaleX>0&&value.scaleY>0;
 const centerX=(b:{minX:number;maxX:number})=>(b.minX+b.maxX)/2;
+const center=(r:readonly[number,number,number,number])=>[(r[0]+r[2])/2,(r[1]+r[3])/2] as const;
 const hair=ids<HairStyleId>(HAIR_PARTS),faces=ids<FaceShapeId>(FACE_PARTS),eyes=ids<EyeStyleId>(EYE_PARTS),brows=ids<BrowStyleId>(BROW_PARTS),noses=ids<NoseStyleId>(NOSE_PARTS),mouths=ids<MouthStyleId>(MOUTH_PARTS),outfits=ids<OutfitStyleId>(OUTFIT_PARTS),hoods=ids<HoodStyleId>(HOOD_PARTS),shirts=ids<ShirtStyleId>(SHIRT_PARTS),straps=ids<StrapStyleId>(STRAP_PARTS),accents=ids<AccentStyleId>(ACCENT_PARTS);
 const rotate=(length:number,index:number,stride:number,offset:number)=>(index*stride+offset)%length;
 
@@ -22,13 +23,18 @@ describe('92-part deterministic auto-fit',()=>{
     }expect(seen.size).toBe(92);
   });
 
+  it('uses the proven reference portrait as the neutral facial landmark calibration',()=>{
+    const eye=center(REFERENCE_ANATOMY_TARGETS.eyeLeft),brow=center(REFERENCE_ANATOMY_TARGETS.browLeft),nose=center(REFERENCE_ANATOMY_TARGETS.nose),mouth=center(REFERENCE_ANATOMY_TARGETS.mouth);
+    expect(eye[1]).toBeGreaterThan(.45);expect(eye[1]).toBeLessThan(.50);expect(brow[1]).toBeGreaterThan(.71);expect(brow[1]).toBeLessThan(.75);expect(nose[1]).toBeGreaterThan(.31);expect(nose[1]).toBeLessThan(.34);expect(mouth[1]).toBeGreaterThan(.16);expect(mouth[1]).toBeLessThan(.19);
+    expect(brow[1]).toBeGreaterThan(eye[1]);expect(eye[1]).toBeGreaterThan(nose[1]);expect(nose[1]).toBeGreaterThan(mouth[1]);
+  });
+
+  it('splits generated hairstyle geometry across front and back anatomical depth',()=>{
+    let stylesWithSourceBack=0;for(const style of hair){const c=structuredClone(DEFAULT_CHARACTER);c.hairStyle=style;const mesh=compileCharacter(c),back=mesh.layers.find(layer=>layer.id==='hair-back'),front=mesh.layers.find(layer=>layer.id==='hair-front');expect(front?.indices.length??0).toBeGreaterThan(0);if((back?.indices.length??0)>18)stylesWithSourceBack++;}expect(stylesWithSourceBack).toBeGreaterThanOrEqual(8);
+  });
+
   it('ignores tiny detached tracing fragments when calculating fit bounds',()=>{
-    const def:PartDefinition={id:'probe',label:'probe',category:'outfit',anchor:[0,0],bounds:{minX:0,minY:0,maxX:20.01,maxY:20.01},tags:[],triangles:[
-      {points:[[0,0],[1,0],[0,1]],colorRole:'jacket',layer:'jacket',zIndex:1},
-      {points:[[1,0],[1,1],[0,1]],colorRole:'jacket',layer:'jacket',zIndex:1},
-      {points:[[20,20],[20.01,20],[20,20.01]],colorRole:'jacket',layer:'jacket',zIndex:1},
-    ]};
-    const robust=coverageBoundsForPart(def,undefined,.995);expect(robust.maxX).toBeLessThanOrEqual(1);expect(robust.maxY).toBeLessThanOrEqual(1);const fit=fitBoundsToRect(robust,{minX:-1,minY:-1,maxX:1,maxY:1});expect(fit.scaleX).toBeGreaterThan(1.9);
+    const def:PartDefinition={id:'probe',label:'probe',category:'outfit',anchor:[0,0],bounds:{minX:0,minY:0,maxX:20.01,maxY:20.01},tags:[],triangles:[{points:[[0,0],[1,0],[0,1]],colorRole:'jacket',layer:'jacket',zIndex:1},{points:[[1,0],[1,1],[0,1]],colorRole:'jacket',layer:'jacket',zIndex:1},{points:[[20,20],[20.01,20],[20,20.01]],colorRole:'jacket',layer:'jacket',zIndex:1}]};const robust=coverageBoundsForPart(def,undefined,.995);expect(robust.maxX).toBeLessThanOrEqual(1);expect(robust.maxY).toBeLessThanOrEqual(1);const fit=fitBoundsToRect(robust,{minX:-1,minY:-1,maxX:1,maxY:1});expect(fit.scaleX).toBeGreaterThan(1.9);
   });
 
   it('uses garment semantics and face anatomy for deterministic z-order',()=>{
