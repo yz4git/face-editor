@@ -7,7 +7,7 @@ export type GeneratedEyeRole='outline'|'white'|'eyes'|'pupil'|'highlight';
 export interface GeneratedVariantTriangle<R extends string>{role:R;points:readonly [Vec2,Vec2,Vec2];shade:number}
 export interface ReferenceBounds{minX:number;minY:number;maxX:number;maxY:number}
 
-export const GENERATED_VARIATION_SOURCE={kind:'generated-reference-sheet',hairCount:10,eyeCount:10,fitRevision:8,method:'source-sheet mask segmentation + feature-preserving hair Delaunay + face-relative display calibration + source-contour eye reconstruction'} as const;
+export const GENERATED_VARIATION_SOURCE={kind:'generated-reference-sheet',hairCount:10,eyeCount:10,fitRevision:9,method:'source-sheet mask segmentation + feature-preserving hair Delaunay + face-relative display calibration + source-contour eye reconstruction + source-like iris/pupil proportions'} as const;
 
 export const HAIR_REFERENCE_BOUNDS:Record<HairStyleId,ReferenceBounds>={
   ponytail:{minX:-.82,maxX:1.35,minY:-.35,maxY:2.18},
@@ -68,16 +68,18 @@ function triangulatePolygon(points:readonly Vec2[]):readonly [Vec2,Vec2,Vec2][]{
 const polygonTriangles=(role:GeneratedEyeRole,points:readonly Vec2[],shades:readonly number[]=[0])=>triangulatePolygon(points).map((tri,i)=>({role,shade:shades[i%shades.length]??0,points:tri}));
 const centroid=(points:readonly Vec2[]):Vec2=>[points.reduce((s,p)=>s+p[0],0)/Math.max(1,points.length),points.reduce((s,p)=>s+p[1],0)/Math.max(1,points.length)];
 const scalePolygon=(points:readonly Vec2[],sx:number,sy:number,dy=0):Vec2[]=>{const[cx,cy]=centroid(points);return points.map(([x,y])=>[cx+(x-cx)*sx,cy+(y-cy)*sy+dy]);};
+const translatePolygon=(points:readonly Vec2[],dx:number,dy:number):Vec2[]=>points.map(([x,y])=>[x+dx,y+dy]);
 const ellipseTriangles=(cx:number,cy:number,rx:number,ry:number,segments=10):GeneratedVariantTriangle<GeneratedEyeRole>[]=>{const ring:Vec2[]=[];for(let i=0;i<segments;i++){const a=i*Math.PI*2/segments;ring.push([cx+Math.cos(a)*rx,cy+Math.sin(a)*ry]);}return polygonTriangles('highlight',ring);};
 const starTriangles=(cx:number,cy:number,r:number,inner=.34,points=4):GeneratedVariantTriangle<GeneratedEyeRole>[]=>{const ring:Vec2[]=[];for(let i=0;i<points*2;i++){const a=-Math.PI/2+i*Math.PI/points,rr=i%2===0?r:r*inner;ring.push([cx+Math.cos(a)*rr,cy+Math.sin(a)*rr]);}return polygonTriangles('highlight',ring);};
-const WHITE_INSET:Record<EyeStyleId,readonly [number,number,number]>={bright:[.82,.78,-.006],determined:[.84,.70,-.004],sharp:[.84,.68,-.004],round:[.82,.80,-.004],soft:[.85,.72,-.003],sleepy:[.88,.60,-.006],sparkle:[.82,.80,-.004],closed:[0,0,0],narrow:[.89,.58,-.004],'side-glance':[.90,.72,-.003]};
+const WHITE_INSET:Record<EyeStyleId,readonly [number,number,number]>={bright:[.90,.86,-.004],determined:[.90,.78,-.003],sharp:[.90,.76,-.003],round:[.90,.86,-.003],soft:[.91,.80,-.003],sleepy:[.92,.70,-.004],sparkle:[.90,.86,-.003],closed:[0,0,0],narrow:[.93,.68,-.003],'side-glance':[.94,.80,-.003]};
+const PUPIL_SCALE:Record<EyeStyleId,readonly [number,number,number]>={bright:[.48,.62,.65],determined:[.46,.60,.65],sharp:[.44,.60,.65],round:[.48,.62,.65],soft:[.48,.60,.65],sleepy:[.50,.58,.70],sparkle:[.46,.58,.65],closed:[0,0,0],narrow:[.50,.58,.70],'side-glance':[.48,.60,1]};
 function contourEye(id:EyeStyleId):GeneratedVariantTriangle<GeneratedEyeRole>[] {
-  const shape=EYE_CONTOUR_SHAPES[id],from=boundsOfPoints(shape.outer),to=EYE_REFERENCE_BOUNDS[id],map=(points:readonly Vec2[])=>points.map(p=>fitPoint(p,from,to)),outer=map(shape.outer),iris=map(shape.iris),pupil=map(shape.pupil),out:GeneratedVariantTriangle<GeneratedEyeRole>[]=[];
+  const shape=EYE_CONTOUR_SHAPES[id],from=boundsOfPoints(shape.outer),to=EYE_REFERENCE_BOUNDS[id],map=(points:readonly Vec2[])=>points.map(p=>fitPoint(p,from,to)),outer=map(shape.outer),iris=map(shape.iris),rawPupil=map(shape.pupil),out:GeneratedVariantTriangle<GeneratedEyeRole>[]=[];
   out.push(...polygonTriangles('outline',outer));
   if(id==='closed')return out;
   const [sx,sy,dy]=WHITE_INSET[id],white=scalePolygon(outer,sx,sy,dy);out.push(...polygonTriangles('white',white));
   if(iris.length)out.push(...polygonTriangles('eyes',iris,[-7,-3,2,6,1,-4]));
-  if(pupil.length)out.push(...polygonTriangles('pupil',pupil));
+  if(iris.length){const [px,py,gaze]=PUPIL_SCALE[id],irisC=centroid(iris),rawC=rawPupil.length?centroid(rawPupil):irisC,base=scalePolygon(iris,px,py),pupil=translatePolygon(base,(rawC[0]-irisC[0])*gaze,(rawC[1]-irisC[1])*.35);out.push(...polygonTriangles('pupil',pupil));}
   if(iris.length){const b=boundsOfPoints(iris),w=b.maxX-b.minX,h=b.maxY-b.minY,cx=b.minX+w*.31,cy=b.maxY-h*.20;
     if(id==='sparkle')out.push(...starTriangles(cx,cy,Math.min(w,h)*.23,.28,4),...starTriangles(b.minX+w*.70,b.minY+h*.31,Math.min(w,h)*.12,.28,4));
     else out.push(...ellipseTriangles(cx,cy,w*(id==='side-glance'?.10:.12),h*.14,10));
