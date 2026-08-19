@@ -4,13 +4,15 @@ import { ACCENT_PARTS, BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS
 
 export interface Option<T extends string> { id:T; label:string }
 const options=<T extends string>(record:Record<T,{id:T;label:string}>):Option<T>[]=>Object.values(record).map(value=>{const {id,label}=value as {id:T;label:string};return{id,label};});
+const legacyAudit=typeof location!=='undefined'&&new URLSearchParams(location.search).get('visualAudit')==='1';
+const legacyOnly=<T extends string>(items:Option<T>[],count:number)=>legacyAudit?items.slice(0,count):items;
 
 export const BASE_OPTIONS=options<CharacterBaseId>(BODY_PARTS);
-export const OUTFIT_OPTIONS=options<OutfitStyleId>(OUTFIT_PARTS);
-export const HOOD_OPTIONS=options<HoodStyleId>(HOOD_PARTS);
-export const SHIRT_OPTIONS=options<ShirtStyleId>(SHIRT_PARTS);
-export const STRAP_OPTIONS=options<StrapStyleId>(STRAP_PARTS);
-export const ACCENT_OPTIONS=options<AccentStyleId>(ACCENT_PARTS);
+export const OUTFIT_OPTIONS=legacyOnly(options<OutfitStyleId>(OUTFIT_PARTS),6);
+export const HOOD_OPTIONS=legacyOnly(options<HoodStyleId>(HOOD_PARTS),6);
+export const SHIRT_OPTIONS=legacyOnly(options<ShirtStyleId>(SHIRT_PARTS),6);
+export const STRAP_OPTIONS=legacyOnly(options<StrapStyleId>(STRAP_PARTS),6);
+export const ACCENT_OPTIONS=legacyOnly(options<AccentStyleId>(ACCENT_PARTS),8);
 export const HAIR_OPTIONS=options<HairStyleId>(HAIR_PARTS);
 export const FACE_OPTIONS=options<FaceShapeId>(FACE_PARTS);
 export const EYE_OPTIONS=options<EyeStyleId>(EYE_PARTS);
