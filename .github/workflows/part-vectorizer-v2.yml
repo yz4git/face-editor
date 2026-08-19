@@ -33,12 +33,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.12.0'
+      - name: Restore quality-locked vectorizer cache
+        if: github.event_name == 'workflow_dispatch' && inputs.manifest_path != ''
+        uses: actions/cache@v4
+        with:
+          path: tools/part-vectorizer-v2/.cache
+          key: vectorizer-v3-${{ runner.os }}-${{ hashFiles('tools/part-vectorizer-v2/package.json', 'tools/part-vectorizer-v2/lib/*.mjs') }}-${{ github.sha }}
+          restore-keys: |
+            vectorizer-v3-${{ runner.os }}-${{ hashFiles('tools/part-vectorizer-v2/package.json', 'tools/part-vectorizer-v2/lib/*.mjs') }}-
+            vectorizer-v3-${{ runner.os }}-
       - name: Install vectorizer dependencies
         working-directory: tools/part-vectorizer-v2
         run: npm install
       - name: Run parser and end-to-end vectorizer tests
         working-directory: tools/part-vectorizer-v2
         run: npm test
+      - name: Benchmark quality-locked throughput
+        working-directory: tools/part-vectorizer-v2
+        run: npm run benchmark
       - name: Vectorize requested authoring sheet
         if: github.event_name == 'workflow_dispatch' && inputs.manifest_path != ''
         shell: bash
@@ -57,6 +69,7 @@ jobs:
           name: part-vectorizer-v2-audit
           path: |
             tools/part-vectorizer-v2/test/output/
+            tools/part-vectorizer-v2/test/output-benchmark.json
             tools/part-vectorizer-v2/manual-output/
             tools/part-vectorizer-v2/package-lock.json
           if-no-files-found: warn
