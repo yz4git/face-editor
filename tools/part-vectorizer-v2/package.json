@@ -9,6 +9,7 @@
   "scripts": {
     "vectorize": "node ./cli.mjs",
     "test": "node --test ./test/*.test.mjs",
+    "benchmark": "node ./test/benchmark.mjs",
     "fixture": "node ./test/make-fixture.mjs"
   },
   "dependencies": {
