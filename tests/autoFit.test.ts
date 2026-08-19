@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { auditGeneratedPartLibrary, BROW_AUTO_FIT, CANONICAL_LAYER_Z, EYE_AUTO_FIT, fitPartToReference, MOUTH_AUTO_FIT, NOSE_AUTO_FIT } from '../src/core/autoFit';
 import { compileCharacter } from '../src/core/compileCharacter';
-import type { PartDefinition, PartTransform } from '../src/core/types';
+import type { CharacterDefinition, PartDefinition, PartTransform } from '../src/core/types';
 import { BROW_PARTS, EYE_PARTS, MOUTH_PARTS, NOSE_PARTS } from '../src/data/partLibrary';
 import { DEFAULT_CHARACTER } from '../src/data/parts';
 
@@ -15,12 +15,32 @@ const deviation=(source:Bounds,reference:Bounds)=>{
   return Math.abs(sx-rx)+Math.abs(sy-ry)+Math.abs(Math.log(width(source)/width(reference)))+Math.abs(Math.log(height(source)/height(reference)));
 };
 
-const fitFamilies=[
-  ['eye',EYE_PARTS,EYE_AUTO_FIT,'bright'],
-  ['brow',BROW_PARTS,BROW_AUTO_FIT,'soft'],
-  ['nose',NOSE_PARTS,NOSE_AUTO_FIT,'diamond'],
-  ['mouth',MOUTH_PARTS,MOUTH_AUTO_FIT,'smile-open'],
-] as const;
+function expectFamilyFit<T extends string>(family:string,parts:Record<T,PartDefinition<T>>,fits:Record<T,PartTransform>,referenceId:T){
+  const reference=parts[referenceId];
+  expect(fitPartToReference(reference,reference)).toEqual({x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0});
+  expect(fits[referenceId]).toEqual({x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0});
+  for(const[id,part]of Object.entries(parts) as [T,PartDefinition<T>][]) {
+    const fit=fits[id];
+    expect([fit.x,fit.y,fit.scaleX,fit.scaleY,fit.rotation,fit.spacing??0].every(Number.isFinite),`${family}:${id}`).toBe(true);
+    expect(fit.scaleX,`${family}:${id}`).toBeGreaterThanOrEqual(.84);
+    expect(fit.scaleX,`${family}:${id}`).toBeLessThanOrEqual(1.18);
+    expect(fit.scaleY,`${family}:${id}`).toBeGreaterThanOrEqual(.84);
+    expect(fit.scaleY,`${family}:${id}`).toBeLessThanOrEqual(1.18);
+    const before=deviation(part.bounds,reference.bounds);
+    const after=deviation(transformedBounds(part.bounds,fit),reference.bounds);
+    expect(after,`${family}:${id}`).toBeLessThanOrEqual(before+1e-9);
+  }
+}
+
+function expectCompiledVariants<T extends string>(family:string,ids:T[],apply:(character:CharacterDefinition,id:T)=>void){
+  for(const id of ids){
+    const character=structuredClone(DEFAULT_CHARACTER);apply(character,id);
+    const mesh=compileCharacter(character);
+    expect(mesh.layers.length,`${family}:${id}`).toBeGreaterThan(10);
+    expect([mesh.bounds.minX,mesh.bounds.minY,mesh.bounds.maxX,mesh.bounds.maxY].every(Number.isFinite),`${family}:${id}`).toBe(true);
+    for(const layer of mesh.layers)expect(Array.from(layer.positions).every(Number.isFinite),`${family}:${id}:${layer.id}`).toBe(true);
+  }
+}
 
 describe('generated part auto fitting',()=>{
   it('audits all 92 selectable generated parts',()=>{
@@ -42,36 +62,16 @@ describe('generated part auto fitting',()=>{
   });
 
   it('keeps each reference feature at identity and moves variants closer to its reference bounds',()=>{
-    for(const[family,parts,fits,referenceId]of fitFamilies){
-      const reference=parts[referenceId];
-      expect(fitPartToReference(reference,reference)).toEqual({x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0});
-      expect(fits[referenceId]).toEqual({x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0});
-      for(const[id,part]of Object.entries(parts)){
-        const fit=fits[id as keyof typeof fits];
-        expect(fit,`${family}:${id}`).toBeDefined();
-        expect([fit.x,fit.y,fit.scaleX,fit.scaleY,fit.rotation,fit.spacing??0].every(Number.isFinite),`${family}:${id}`).toBe(true);
-        expect(fit.scaleX,`${family}:${id}`).toBeGreaterThanOrEqual(.84);
-        expect(fit.scaleX,`${family}:${id}`).toBeLessThanOrEqual(1.18);
-        expect(fit.scaleY,`${family}:${id}`).toBeGreaterThanOrEqual(.84);
-        expect(fit.scaleY,`${family}:${id}`).toBeLessThanOrEqual(1.18);
-        const before=deviation((part as PartDefinition).bounds,reference.bounds);
-        const after=deviation(transformedBounds((part as PartDefinition).bounds,fit),reference.bounds);
-        expect(after,`${family}:${id}`).toBeLessThanOrEqual(before+1e-9);
-      }
-    }
+    expectFamilyFit('eye',EYE_PARTS,EYE_AUTO_FIT,'bright');
+    expectFamilyFit('brow',BROW_PARTS,BROW_AUTO_FIT,'soft');
+    expectFamilyFit('nose',NOSE_PARTS,NOSE_AUTO_FIT,'diamond');
+    expectFamilyFit('mouth',MOUTH_PARTS,MOUTH_AUTO_FIT,'smile-open');
   });
 
   it('compiles every auto-fitted facial variant to finite buffers',()=>{
-    for(const[family,parts]of [['eye',EYE_PARTS],['brow',BROW_PARTS],['nose',NOSE_PARTS],['mouth',MOUTH_PARTS]] as const)for(const id of Object.keys(parts)){
-      const character=structuredClone(DEFAULT_CHARACTER);
-      if(family==='eye')character.eyeStyle=id as keyof typeof EYE_PARTS;
-      else if(family==='brow')character.browStyle=id as keyof typeof BROW_PARTS;
-      else if(family==='nose')character.noseStyle=id as keyof typeof NOSE_PARTS;
-      else character.mouthStyle=id as keyof typeof MOUTH_PARTS;
-      const mesh=compileCharacter(character);
-      expect(mesh.layers.length,`${family}:${id}`).toBeGreaterThan(10);
-      expect([mesh.bounds.minX,mesh.bounds.minY,mesh.bounds.maxX,mesh.bounds.maxY].every(Number.isFinite),`${family}:${id}`).toBe(true);
-      for(const layer of mesh.layers)expect(Array.from(layer.positions).every(Number.isFinite),`${family}:${id}:${layer.id}`).toBe(true);
-    }
+    expectCompiledVariants('eye',Object.keys(EYE_PARTS) as (keyof typeof EYE_PARTS)[],(character,id)=>{character.eyeStyle=id;});
+    expectCompiledVariants('brow',Object.keys(BROW_PARTS) as (keyof typeof BROW_PARTS)[],(character,id)=>{character.browStyle=id;});
+    expectCompiledVariants('nose',Object.keys(NOSE_PARTS) as (keyof typeof NOSE_PARTS)[],(character,id)=>{character.noseStyle=id;});
+    expectCompiledVariants('mouth',Object.keys(MOUTH_PARTS) as (keyof typeof MOUTH_PARTS)[],(character,id)=>{character.mouthStyle=id;});
   });
 });
