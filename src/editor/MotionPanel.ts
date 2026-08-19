@@ -16,7 +16,7 @@ const ACTION_ICONS:Record<Exclude<MotionActionId,'none'>,string>={breathe:'≈',
 export class MotionPanel{
   private panel:HTMLElement;
   private launchButton:HTMLButtonElement;
-  private statusPill:HTMLElement;
+  private statusPill:HTMLButtonElement;
   private state=cloneMotionState(DEFAULT_MOTION_STATE);
   private open=false;
   private raf=0;
