@@ -34,10 +34,12 @@ export class CharacterRenderer{
     const params=new URLSearchParams(location.search),forceCanvas=params.get('renderer')==='canvas2d'||params.get('visualAudit')==='1';this.auditMode=params.get('visualAudit')==='1';
     if(!forceCanvas)this.tryWebGL();if(!this.renderer)this.enableCanvasFallback();
     this.camera.position.set(0,0,10);this.camera.lookAt(0,0,0);this.scene.add(this.root);
+    this.host.addEventListener('preview-camera',this.onPreviewCamera);
     this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(this.host);this.resize();this.publishMode();
   }
   getMode():RendererMode{return this.mode;}
   getPreviewCamera():CutsceneCameraState{return{...this.previewCamera};}
+  private onPreviewCamera=(event:Event)=>{this.setPreviewCamera((event as CustomEvent<Partial<CutsceneCameraState>|null>).detail??null);};
   private tryWebGL(){
     try{
       const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x000000,0);renderer.domElement.className='character-canvas';
@@ -79,5 +81,5 @@ export class CharacterRenderer{
     for(const layer of character.layers){const{positions,colors,indices}=layer;for(let i=0;i<indices.length;i+=3){const ia=indices[i]*3,ib=indices[i+1]*3,ic=indices[i+2]*3,p0=toCanvas(positions[ia],positions[ia+1]),p1=toCanvas(positions[ib],positions[ib+1]),p2=toCanvas(positions[ic],positions[ic+1]);const r=Math.round((colors[ia]+colors[ib]+colors[ic])/3*255),g=Math.round((colors[ia+1]+colors[ib+1]+colors[ic+1])/3*255),b=Math.round((colors[ia+2]+colors[ib+2]+colors[ic+2])/3*255),fill=`rgb(${r},${g},${b})`;ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=fill;ctx.lineWidth=.9;ctx.stroke();}}
   }
   private disposeMeshes(){this.meshByLayer.clear();while(this.root.children.length){const child=this.root.children.pop();if(child instanceof THREE.Mesh){child.geometry.dispose();const m=child.material;Array.isArray(m)?m.forEach(x=>x.dispose()):m.dispose();}}}
-  dispose(){this.observer.disconnect();this.disposeMeshes();this.renderer?.dispose();this.renderer?.domElement.remove();this.fallbackCanvas?.remove();}
+  dispose(){this.host.removeEventListener('preview-camera',this.onPreviewCamera);this.observer.disconnect();this.disposeMeshes();this.renderer?.dispose();this.renderer?.domElement.remove();this.fallbackCanvas?.remove();}
 }
