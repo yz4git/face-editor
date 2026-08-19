@@ -1,11 +1,12 @@
 import { CharacterRenderer, type CompiledPreviewMutator } from '../render/CharacterRenderer';
 import { renderPartThumbnail } from '../render/PartThumbnailRenderer';
 import { exportCharacterBundle } from '../core/compileCharacter';
-import { expressionStateForBundle, parseCharacterBundle, serializeCharacterBundle } from '../core/characterBundle';
+import { cutsceneStateForBundle, expressionStateForBundle, parseCharacterBundle, serializeCharacterBundle } from '../core/characterBundle';
 import { BODY_PROPORTION_LIMITS, DEFAULT_BODY_PROPORTIONS, normalizeBodyProportions } from '../core/bodyProportions';
+import { CUTSCENE_TEMPLATES, cloneCutsceneProject, normalizeCutsceneProject } from '../core/cutsceneSystem';
 import { DEFAULT_EXPRESSION_SET } from '../core/expressionSystem';
 import { cloneMotionState, DEFAULT_MOTION_STATE, normalizeMotionState } from '../core/motionSystem';
-import type { BodyProportions, CharacterBundle, CharacterDefinition, CharacterExpressionSet, CharacterMotionState, ExpressionId, PartDefinition, PartTransform } from '../core/types';
+import type { BodyProportions, CharacterBundle, CharacterDefinition, CharacterExpressionSet, CharacterMotionState, CutsceneProject, ExpressionId, PartDefinition, PartTransform } from '../core/types';
 import {
   ACCENT_OPTIONS,BASE_OPTIONS,BROW_OPTIONS,DEFAULT_CHARACTER,EYE_COLORS,EYE_OPTIONS,FACE_OPTIONS,HAIR_COLORS,HAIR_OPTIONS,HOOD_OPTIONS,JACKET_COLORS,MOUTH_OPTIONS,NOSE_OPTIONS,OUTFIT_OPTIONS,SHIRT_OPTIONS,SKIN_COLORS,STRAP_OPTIONS,
 } from '../data/parts';
@@ -46,6 +47,8 @@ export class EditorApp{
   private expressionRestoreHandler:((active:ExpressionId,set:CharacterExpressionSet)=>void)|null=null;
   private motionExportState:CharacterMotionState=cloneMotionState(DEFAULT_MOTION_STATE);
   private motionRestoreHandler:((state:CharacterMotionState)=>void)|null=null;
+  private cutsceneExportState:CutsceneProject=cloneCutsceneProject(CUTSCENE_TEMPLATES.intro);
+  private cutsceneRestoreHandler:((project:CutsceneProject)=>void)|null=null;
   private statusMessage='READY';
 
   constructor(private root:HTMLElement){this.mount();}
@@ -101,7 +104,7 @@ export class EditorApp{
           </section>
         </main>
         <footer class="bottombar">
-          <div><strong>Generated-source triangle character data</strong><small>Face identity stays intact while body, expression, pose and motion remain separate non-destructive layers.</small></div>
+          <div><strong>Generated-source triangle character data</strong><small>Face identity stays intact while body, expression, pose, motion and cutscene direction remain separate non-destructive layers.</small></div>
           <div class="save-slots"><span>SLOT</span>${[1,2,3,4].map(n=>`<button data-slot="${n}" class="${n===1?'selected':''}" aria-label="Select save slot ${n}">${n}</button>`).join('')}<button data-action="save-slot">SAVE</button><button data-action="load-slot">LOAD</button><output id="save-status" role="status" aria-live="polite">${this.statusMessage}</output></div>
         </footer>
       </div>`;
@@ -139,7 +142,7 @@ export class EditorApp{
   public getCharacterDefinition(){return clone(this.state);}
   public applyCharacterDefinition(definition:CharacterDefinition){this.pushHistory();this.state=clone(definition);this.state.bodyProportions=normalizeBodyProportions(this.state.bodyProportions);this.commit();}
   public getCharacterBundle(){return this.buildBundle();}
-  public applyCharacterBundle(bundle:CharacterBundle){this.pushHistory();this.restoreBundle(bundle);this.commit();this.setStatus('BUNDLE RESTORED · EXPRESSIONS + MOTION');}
+  public applyCharacterBundle(bundle:CharacterBundle){this.pushHistory();this.restoreBundle(bundle);this.commit();this.setStatus('BUNDLE RESTORED · EXPRESSIONS + MOTION + CUTSCENE');}
   public setPreviewTransformer(transformer:((definition:CharacterDefinition)=>CharacterDefinition)|null){this.previewTransformer=transformer;this.renderPreview();}
   public setExpressionExportState(active:ExpressionId,set:CharacterExpressionSet){this.expressionExportState={active,set:clone(set)};}
   public setExpressionRestoreHandler(handler:((active:ExpressionId,set:CharacterExpressionSet)=>void)|null){this.expressionRestoreHandler=handler;}
@@ -147,6 +150,8 @@ export class EditorApp{
   public setAnimationTime(timeMs:number){this.renderer.setAnimationTime(timeMs);}
   public setMotionExportState(state:CharacterMotionState){this.motionExportState=cloneMotionState(state);}
   public setMotionRestoreHandler(handler:((state:CharacterMotionState)=>void)|null){this.motionRestoreHandler=handler;}
+  public setCutsceneExportState(project:CutsceneProject){this.cutsceneExportState=cloneCutsceneProject(normalizeCutsceneProject(project));}
+  public setCutsceneRestoreHandler(handler:((project:CutsceneProject)=>void)|null){this.cutsceneRestoreHandler=handler;}
 
   private pushHistory(){this.history.push(clone(this.state));if(this.history.length>80)this.history.shift();this.redoHistory=[];}
   private commit(){this.renderUI();this.renderPreview();}
@@ -160,7 +165,7 @@ export class EditorApp{
   private resetBody(){this.pushHistory();this.state.bodyProportions=clone(DEFAULT_BODY_PROPORTIONS);this.commit();}
   private buildBundle():CharacterBundle{
     this.state.bodyProportions=normalizeBodyProportions(this.state.bodyProportions);
-    const bundle=exportCharacterBundle(this.state,{activeExpression:this.expressionExportState.active,expressionSet:this.expressionExportState.set});bundle.motion=cloneMotionState(this.motionExportState);return bundle;
+    const bundle=exportCharacterBundle(this.state,{activeExpression:this.expressionExportState.active,expressionSet:this.expressionExportState.set});bundle.motion=cloneMotionState(this.motionExportState);bundle.cutscene=cloneCutsceneProject(this.cutsceneExportState);return bundle;
   }
   private restoreBundle(bundle:CharacterBundle){
     this.state=clone(bundle.definition);
@@ -169,26 +174,27 @@ export class EditorApp{
     this.expressionExportState={active:expression.active,set:clone(expression.set)};
     this.expressionRestoreHandler?.(expression.active,expression.set);
     const motion=normalizeMotionState(bundle.motion);this.motionExportState=cloneMotionState(motion);this.motionRestoreHandler?.(motion);
+    const cutscene=cutsceneStateForBundle(bundle);this.cutsceneExportState=cloneCutsceneProject(cutscene);this.cutsceneRestoreHandler?.(cutscene);
   }
   private export(){
     const bundle=this.buildBundle(),blob=new Blob([serializeCharacterBundle(bundle)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-    a.href=url;a.download='polygon-character.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);this.setStatus('EXPORTED · EXPRESSIONS + MOTION INCLUDED');
+    a.href=url;a.download='polygon-character.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);this.setStatus('EXPORTED · EXPRESSIONS + MOTION + CUTSCENE INCLUDED');
   }
   private saveToSlot(slot:number){
-    try{localStorage.setItem(`face-editor:slot:${slot}`,serializeCharacterBundle(this.buildBundle()));this.activeSlot=slot;this.setStatus('SAVED SLOT '+slot+' · MOTION INCLUDED');this.renderUI();}
+    try{localStorage.setItem(`face-editor:slot:${slot}`,serializeCharacterBundle(this.buildBundle()));this.activeSlot=slot;this.setStatus('SAVED SLOT '+slot+' · CUTSCENE INCLUDED');this.renderUI();}
     catch{this.setStatus('SAVE FAILED · STORAGE UNAVAILABLE');}
   }
   private loadFromSlot(slot:number){
     try{
       const raw=localStorage.getItem(`face-editor:slot:${slot}`);
       if(!raw){this.setStatus('SLOT '+slot+' IS EMPTY');return;}
-      this.applyCharacterBundle(parseBundleWithMotion(JSON.parse(raw)));this.setStatus('LOADED SLOT '+slot+' · MOTION RESTORED');
+      this.applyCharacterBundle(parseBundleWithMotion(JSON.parse(raw)));this.setStatus('LOADED SLOT '+slot+' · CUTSCENE RESTORED');
     }
     catch(error){this.setStatus('LOAD FAILED · '+(error instanceof Error?error.message:'INVALID JSON'));}
   }
   private async importFile(file:File|null){
     if(!file)return;
-    try{const bundle=parseBundleWithMotion(JSON.parse(await file.text()));this.applyCharacterBundle(bundle);this.setStatus('IMPORTED · '+file.name+' · MOTION RESTORED');}
+    try{const bundle=parseBundleWithMotion(JSON.parse(await file.text()));this.applyCharacterBundle(bundle);this.setStatus('IMPORTED · '+file.name+' · CUTSCENE RESTORED');}
     catch(error){this.setStatus('IMPORT FAILED · '+(error instanceof Error?error.message:'INVALID JSON'));}
     finally{const input=this.root.querySelector<HTMLInputElement>('#bundle-import-input');if(input)input.value='';}
   }
