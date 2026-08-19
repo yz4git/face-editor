@@ -10,7 +10,9 @@
     "test": "vitest run tests",
     "vectorizer:setup": "npm --prefix tools/part-vectorizer-v2 install",
     "vectorize:parts": "npm --prefix tools/part-vectorizer-v2 run vectorize --",
-    "repair:parts": "npm --prefix tools/part-vectorizer-v2 run repair --"
+    "repair:parts": "npm --prefix tools/part-vectorizer-v2 run repair --",
+    "repair:apply": "node scripts/apply-repair-report.mjs",
+    "repair:closed-loop": "node scripts/closed-loop-repair.mjs"
   },
   "dependencies": {
     "three": "^0.185.1"
