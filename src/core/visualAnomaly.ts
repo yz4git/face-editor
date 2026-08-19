@@ -27,7 +27,10 @@ const RULES:Record<keyof VisualDifferenceMetrics,MetricRule>={
   centroidShift:{weight:.95,floor:.006},
   bboxScaleDeviation:{weight:1.05,floor:.012,twoSided:true},
   longestDiffSpan:{weight:1.10,floor:.025},
-  thinSpike:{weight:1.70,floor:.018},
+  // Thin lines are legitimate in hood drawstrings, straps and hair strands, so this is a weak
+  // population signal globally. Accent parts have a separate absolute spike guard below because
+  // the previously observed source-sheet artifact was a long isolated accent-colored line.
+  thinSpike:{weight:.55,floor:.018},
   edgeTouchRatio:{weight:1.80,floor:.002},
 };
 const metricKeys=Object.keys(RULES) as (keyof VisualDifferenceMetrics)[];
