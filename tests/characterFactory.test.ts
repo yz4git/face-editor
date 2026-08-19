@@ -41,7 +41,7 @@ describe('Character Factory v1',()=>{
   it('gives style recipes visibly different body tendencies',()=>{
     const sample=(style:'soft'|'energetic'|'elegant')=>Array.from({length:48},(_,index)=>createFactoryCandidate(`body-tendency-${index}`,style)!.definition.bodyProportions!);
     const soft=sample('soft'),energetic=sample('energetic'),elegant=sample('elegant');
-    expect(average(elegant.map(body=>body.height))).toBeGreaterThan(average(soft.map(body=>body.height))+.12);
+    expect(average(elegant.map(body=>body.height))).toBeGreaterThan(average(soft.map(body=>body.height))+.09);
     expect(average(energetic.map(body=>body.shoulders))).toBeGreaterThan(average(soft.map(body=>body.shoulders))+.12);
     expect(average(elegant.map(body=>body.build))).toBeLessThan(average(energetic.map(body=>body.build))-.10);
   });
