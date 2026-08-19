@@ -1,5 +1,6 @@
 import type { CharacterDefinition } from '../core/types';
 import { FACTORY_STYLES, createVariationBatch, generateFactoryBatch, type FactoryCandidate, type FactoryLock, type FactoryStyleId } from '../core/characterFactory';
+import { selectFactoryDisplayCandidates } from '../core/factoryDisplayGate';
 import { renderFactoryThumbnail } from '../render/FactoryThumbnailRenderer';
 
 interface FactoryBridge{getCharacter():CharacterDefinition;applyCharacter(definition:CharacterDefinition):void}
@@ -45,11 +46,18 @@ export class FactoryPanel{
 
   private show(){this.open=true;this.panel.hidden=false;if(!this.candidates.length)this.generate(false);else this.render();}
   private hide(){this.open=false;this.panel.hidden=true;}
+  private buildSafeBatch(variation:boolean,anchor:CharacterDefinition|undefined,locks:FactoryLock[]){
+    const make=(suffix:string)=>variation?createVariationBatch(anchor!,{seed:`${this.seed}:variation:${suffix}`,style:this.style,count:24,poolSize:160,locks,qualityFloor:72}):generateFactoryBatch({seed:`${this.seed}:${suffix}`,style:this.style,count:24,poolSize:160,qualityFloor:72});
+    const first=selectFactoryDisplayCandidates(make('primary'),12);if(first.length>=12)return first;
+    const signatures=new Set(first.map(candidate=>candidate.signature)),combined=[...first];
+    for(const candidate of selectFactoryDisplayCandidates(make('refill'),24)){if(signatures.has(candidate.signature))continue;signatures.add(candidate.signature);combined.push(candidate);if(combined.length>=12)break;}
+    return combined;
+  }
   private generate(variation:boolean){
     const anchor=variation?(this.candidates[this.selected]?.definition??this.bridge.getCharacter()):undefined;
     if(variation)this.variationAnchor=clone(anchor!);else this.variationAnchor=null;
     const locks=variation?[...this.locks]:[];
-    this.candidates=variation?createVariationBatch(anchor!,{seed:`${this.seed}:variation:${Date.now().toString(36)}`,style:this.style,count:12,poolSize:84,locks,qualityFloor:72}):generateFactoryBatch({seed:this.seed,style:this.style,count:12,poolSize:84,qualityFloor:72});
+    this.candidates=this.buildSafeBatch(variation,anchor,locks);
     this.selected=0;this.render();
   }
   private useSelected(){const candidate=this.candidates[this.selected];if(!candidate)return;this.bridge.applyCharacter(clone(candidate.definition));this.hide();}
@@ -71,10 +79,10 @@ export class FactoryPanel{
           <div class="factory-control-group"><label>VARIATION LOCKS</label><div class="factory-lock-row">${lockOrder.map(lock=>`<button data-factory-lock="${lock}" class="${this.locks.has(lock)?'selected':''}">${lock.toUpperCase()}</button>`).join('')}</div></div>
           <button class="factory-generate" data-factory-action="generate">GENERATE 12</button>
         </div>
-        <div class="factory-status"><span>POOL 84 → TOP 12</span><span>QUALITY FLOOR 72</span><span>DIVERSITY RANKING ON</span><span>★ ${favoriteCount} KEPT</span>${this.variationAnchor?'<strong>VARIATION MODE</strong>':''}${message?`<strong>${message}</strong>`:''}</div>
+        <div class="factory-status"><span>POOL 160×2 → SAFE TOP 12</span><span>QUALITY FLOOR 72</span><span>DISPLAY SAFETY GATE ON</span><span>DIVERSITY RANKING ON</span><span>★ ${favoriteCount} KEPT</span>${this.variationAnchor?'<strong>VARIATION MODE</strong>':''}${message?`<strong>${message}</strong>`:''}</div>
         <div class="factory-grid">${this.candidates.map((candidate,index)=>`<button class="factory-card ${index===this.selected?'selected':''}" data-factory-index="${index}" aria-label="Candidate ${index+1}"><canvas class="factory-thumb" data-factory-thumb="${index}"></canvas><div class="factory-card-meta"><strong>#${String(index+1).padStart(2,'0')}</strong><span>Q ${Math.round(candidate.scores.quality)}</span><span>H ${Math.round(candidate.scores.harmony)}</span><span>U ${Math.round(candidate.scores.diversity)}</span></div></button>`).join('')}</div>
         <footer class="factory-footer">
-          <div class="factory-selected">${selected?`<strong>SELECTED #${String(this.selected+1).padStart(2,'0')}</strong><span>${selected.style.toUpperCase()} · seed ${this.escape(selected.seed.slice(-24))}</span><span>Quality ${selected.scores.quality.toFixed(1)} · Harmony ${selected.scores.harmony.toFixed(1)} · Diversity ${selected.scores.diversity.toFixed(1)}</span>`:'<strong>NO CANDIDATES</strong>'}</div>
+          <div class="factory-selected">${selected?`<strong>SELECTED #${String(this.selected+1).padStart(2,'0')}</strong><span>${selected.style.toUpperCase()} · seed ${this.escape(selected.seed.slice(-24))}</span><span>Quality ${selected.scores.quality.toFixed(1)} · Harmony ${selected.scores.harmony.toFixed(1)} · Diversity ${selected.scores.diversity.toFixed(1)}</span>`:'<strong>NO SAFE CANDIDATES — loosen locks or use a new seed</strong>'}</div>
           <div class="factory-footer-actions"><button data-factory-action="keep" ${selected?'':'disabled'}>★ KEEP</button><button data-factory-action="variations" ${selected?'':'disabled'}>VARIATIONS</button><button class="factory-use" data-factory-action="use" ${selected?'':'disabled'}>USE THIS CHARACTER</button></div>
         </footer>
       </div>`;
