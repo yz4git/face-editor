@@ -14,6 +14,8 @@ export type ShirtStyleId = 'tee' | 'long-sleeve' | 'tank' | 'three-quarter' | 't
 export type StrapStyleId = 'simple' | 'padded' | 'single-pouch' | 'double-pouch' | 'cross' | 'y-harness';
 export type AccentStyleId = 'diamond' | 'long-strip' | 'point-strip' | 'corner' | 'chevron' | 'slash' | 'taper' | 'triangle';
 export type ExpressionId = 'neutral' | 'smile' | 'happy' | 'angry' | 'sad' | 'surprised' | 'serious' | 'blink';
+export type PoseId = 'idle' | 'relax' | 'confident' | 'cute' | 'cool' | 'fight' | 'run' | 'jump';
+export type MotionActionId = 'none' | 'breathe' | 'blink' | 'talk' | 'wave' | 'walk' | 'run';
 export type PartCategory = 'body' | 'outfit' | 'hair' | 'face' | 'eye' | 'brow' | 'nose' | 'mouth';
 export type ColorRole = 'skin' | 'hair' | 'eyes' | 'brows' | 'jacket' | 'accent' | 'shirt' | 'hood' | 'strap' | 'metal' | 'white' | 'mouth' | 'tongue' | 'pupil';
 
@@ -30,6 +32,14 @@ export interface BodyProportions {
   height: number;
   build: number;
   shoulders: number;
+}
+
+export interface CharacterMotionState {
+  version: 1;
+  pose: PoseId;
+  action: MotionActionId;
+  playing: boolean;
+  autoBlink: boolean;
 }
 
 export interface ExpressionTransformDelta {
@@ -136,6 +146,7 @@ export interface CharacterBundle {
     active: ExpressionId;
     set: CharacterExpressionSet;
   };
+  motion?: CharacterMotionState;
   mesh: {
     version: 1;
     layers: SerializablePolygonLayer[];
