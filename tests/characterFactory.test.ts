@@ -27,14 +27,21 @@ describe('Character Factory v1',()=>{
     }
   });
 
-  it('keeps requested groups fixed while generating variations',()=>{
+  it('keeps requested groups fixed while leaving unlocked outfit space for variations',()=>{
     const anchor=structuredClone(DEFAULT_CHARACTER);
     anchor.faceShape='diamond';anchor.eyeStyle='narrow';anchor.browStyle='angled';anchor.noseStyle='button';anchor.mouthStyle='smirk';
     anchor.hairStyle='half-up';anchor.outfitStyle='vest';anchor.hoodStyle='wing';anchor.shirtStyle='sleeveless-high';anchor.strapStyle='y-harness';anchor.accentStyle='triangle';
     anchor.colors={skin:'#d99b6c',hair:'#173d70',eyes:'#168a91',brows:'#173d70',jacket:'#7a3d8e',accent:'#56c4d8'};
-    const batch=createVariationBatch(anchor,{seed:'locked-variation',style:'futuristic',count:8,poolSize:72,qualityFloor:60,locks:['face','hair','outfit','colors']});
+    const batch=createVariationBatch(anchor,{seed:'locked-variation',style:'futuristic',count:8,poolSize:72,qualityFloor:60,locks:['face','hair','colors']});
     expect(batch).toHaveLength(8);
-    for(const item of batch){const c=item.definition;expect([c.faceShape,c.eyeStyle,c.browStyle,c.noseStyle,c.mouthStyle]).toEqual([anchor.faceShape,anchor.eyeStyle,anchor.browStyle,anchor.noseStyle,anchor.mouthStyle]);expect(c.hairStyle).toBe(anchor.hairStyle);expect([c.baseStyle,c.outfitStyle,c.hoodStyle,c.shirtStyle,c.strapStyle,c.accentStyle]).toEqual([anchor.baseStyle,anchor.outfitStyle,anchor.hoodStyle,anchor.shirtStyle,anchor.strapStyle,anchor.accentStyle]);expect(c.colors).toEqual(anchor.colors);}
+    for(const item of batch){const c=item.definition;expect([c.faceShape,c.eyeStyle,c.browStyle,c.noseStyle,c.mouthStyle]).toEqual([anchor.faceShape,anchor.eyeStyle,anchor.browStyle,anchor.noseStyle,anchor.mouthStyle]);expect(c.hairStyle).toBe(anchor.hairStyle);expect(c.colors).toEqual(anchor.colors);}
+    expect(new Set(batch.map(item=>[item.definition.outfitStyle,item.definition.hoodStyle,item.definition.shirtStyle,item.definition.strapStyle,item.definition.accentStyle].join('|'))).size).toBeGreaterThan(1);
+  });
+
+  it('collapses to one unique result when every variation group is locked',()=>{
+    const batch=createVariationBatch(DEFAULT_CHARACTER,{seed:'fully-locked',style:'soft',count:8,poolSize:72,qualityFloor:0,locks:['face','hair','outfit','colors']});
+    expect(batch).toHaveLength(1);
+    expect(batch[0].signature).toBe(generateFactoryBatch({seed:'irrelevant',style:'soft',count:1,poolSize:1,anchor:DEFAULT_CHARACTER,locks:['face','hair','outfit','colors'],qualityFloor:0})[0].signature);
   });
 
   it('keeps a meaningful spread instead of returning near-identical top scores',()=>{
