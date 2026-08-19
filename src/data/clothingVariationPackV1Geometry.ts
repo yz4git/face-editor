@@ -3,157 +3,167 @@ import type { Vec2 } from '../core/types';
 /**
  * Clothing Variation Pack v1
  *
- * Normalized triangle data authored from the generated clothing source sheet for
- * this editor.  The source art is intentionally treated as authoring reference
- * only; runtime continues to use texture-free triangle geometry.
+ * Image-derived normalized geometry based on the generated clothing reference
+ * sheet. Runtime remains texture-free; the source image is authoring reference
+ * only and every selectable item is emitted as finite triangle data.
  */
 export type ClothingPackV1Kind='outfit'|'hood'|'shirt'|'strap'|'accent';
 export type ClothingPackV1Role='jacket'|'hood'|'shirt'|'strap'|'metal'|'accent';
 export interface ClothingPackV1Triangle{role:ClothingPackV1Role;shade:number;points:readonly[Vec2,Vec2,Vec2]}
 
 type Tri=ClothingPackV1Triangle;
+const v=(x:number,y:number):Vec2=>[x,y];
 const tri=(role:ClothingPackV1Role,shade:number,a:Vec2,b:Vec2,c:Vec2):Tri=>({role,shade,points:[a,b,c]});
-const quad=(role:ClothingPackV1Role,shade:number,a:Vec2,b:Vec2,c:Vec2,d:Vec2):Tri[]=>[tri(role,shade,a,b,c),tri(role,shade,a,c,d)];
-const mirror=(p:Vec2):Vec2=>[-p[0],p[1]];
-const mirrorQuad=(role:ClothingPackV1Role,shade:number,a:Vec2,b:Vec2,c:Vec2,d:Vec2):Tri[]=>[
+const quad=(role:ClothingPackV1Role,shade:number,a:Vec2,b:Vec2,c:Vec2,d:Vec2):Tri[]=>[
+  tri(role,shade,a,b,c),tri(role,shade,a,c,d),
+];
+const rect=(role:ClothingPackV1Role,shade:number,cx:number,cy:number,w:number,h:number):Tri[]=>quad(role,shade,v(cx-w/2,cy+h/2),v(cx+w/2,cy+h/2),v(cx+w/2,cy-h/2),v(cx-w/2,cy-h/2));
+const mirror=(p:Vec2):Vec2=>v(-p[0],p[1]);
+const mirroredQuad=(role:ClothingPackV1Role,shade:number,a:Vec2,b:Vec2,c:Vec2,d:Vec2):Tri[]=>[
   ...quad(role,shade,a,b,c,d),...quad(role,shade,mirror(a),mirror(d),mirror(c),mirror(b)),
 ];
-const fan=(role:ClothingPackV1Role,shade:number,points:readonly Vec2[]):Tri[]=>{
-  if(points.length<3)return[];const out:Tri[]=[];for(let i=1;i<points.length-1;i++)out.push(tri(role,shade,points[0],points[i],points[i+1]));return out;
+
+interface OutfitRecipe{topX:number;outerX:number;wristX:number;wristY:number;hemX:number;hemY:number;waistX:number;detail:'lapel'|'rib'|'long'|'tactical'|'crop'|'tech'}
+const OUTFIT_RECIPES:Record<string,OutfitRecipe>={
+  blazer:{topX:.55,outerX:.98,wristX:.77,wristY:-1.68,hemX:.53,hemY:-1.79,waistX:.49,detail:'lapel'},
+  bomber:{topX:.60,outerX:1.08,wristX:.82,wristY:-1.58,hemX:.58,hemY:-1.57,waistX:.57,detail:'rib'},
+  'long-coat':{topX:.55,outerX:.98,wristX:.75,wristY:-1.72,hemX:.72,hemY:-2.36,waistX:.48,detail:'long'},
+  'tactical-jacket':{topX:.61,outerX:1.04,wristX:.80,wristY:-1.70,hemX:.59,hemY:-1.83,waistX:.58,detail:'tactical'},
+  'cropped-jacket':{topX:.57,outerX:1.00,wristX:.78,wristY:-1.54,hemX:.55,hemY:-1.28,waistX:.53,detail:'crop'},
+  'tech-parka':{topX:.64,outerX:1.10,wristX:.84,wristY:-1.72,hemX:.63,hemY:-1.91,waistX:.61,detail:'tech'},
 };
 
-const sleeves=(outerX:number,wristX:number,wristY:number,shadeL=-5,shadeR=3):Tri[]=>[
-  ...quad('jacket',shadeL,[-.46,-.46],[-outerX,-.64],[-wristX,wristY],[-.51,wristY+.10]),
-  ...quad('jacket',shadeR,[.46,-.46],[outerX,-.64],[wristX,wristY],[.51,wristY+.10]),
-];
-const torso=(topX:number,waistX:number,hemX:number,hemY:number,shade=0):Tri[]=>[
-  tri('jacket',shade,[-topX,-.43],[topX,-.43],[hemX,hemY]),
-  tri('jacket',shade,[-topX,-.43],[hemX,hemY],[-hemX,hemY]),
-  ...quad('jacket',shade-7,[-topX,-.43],[-.05,-.43],[-.04,hemY],[-hemX,hemY]),
-  ...quad('jacket',shade+4,[.05,-.43],[topX,-.43],[hemX,hemY],[.04,hemY]),
-  ...quad('jacket',shade-3,[-waistX,-1.06],[waistX,-1.06],[hemX,hemY],[-hemX,hemY]),
-];
+function outfitBase(r:OutfitRecipe):Tri[]{
+  const out:Tri[]=[
+    tri('jacket',0,v(-r.topX,-.43),v(r.topX,-.43),v(r.hemX,r.hemY)),
+    tri('jacket',-6,v(-r.topX,-.43),v(r.hemX,r.hemY),v(-r.hemX,r.hemY)),
+    ...quad('jacket',-7,v(-r.topX,-.43),v(-.03,-.43),v(-.03,r.hemY),v(-r.hemX,r.hemY)),
+    ...quad('jacket',5,v(.03,-.43),v(r.topX,-.43),v(r.hemX,r.hemY),v(.03,r.hemY)),
+    ...quad('jacket',-3,v(-r.waistX,-1.05),v(r.waistX,-1.05),v(r.hemX,r.hemY),v(-r.hemX,r.hemY)),
+    ...quad('jacket',-5,v(-.46,-.46),v(-r.outerX,-.64),v(-r.wristX,r.wristY),v(-.51,r.wristY+.10)),
+    ...quad('jacket',4,v(.46,-.46),v(r.outerX,-.64),v(r.wristX,r.wristY),v(.51,r.wristY+.10)),
+  ];
+  return out;
+}
+function outfitDetails(r:OutfitRecipe):Tri[]{
+  switch(r.detail){
+    case'lapel':return[
+      ...quad('jacket',-15,v(-.45,-.45),v(-.08,-.48),v(-.18,-1.08),v(-.46,-.76)),
+      ...quad('jacket',8,v(.08,-.48),v(.45,-.45),v(.46,-.76),v(.18,-1.08)),
+      ...rect('jacket',-10,-.34,-1.35,.30,.08),...rect('jacket',6,.34,-1.35,.30,.08),
+    ];
+    case'rib':return[
+      ...rect('jacket',-15,0,r.hemY+.05,1.12,.12),
+      ...rect('jacket',-10,-.74,r.wristY+.04,.18,.12),...rect('jacket',5,.74,r.wristY+.04,.18,.12),
+      ...quad('jacket',-9,v(-.52,-.78),v(-.28,-.95),v(-.33,-1.03),v(-.57,-.86)),
+      ...quad('jacket',7,v(.28,-.95),v(.52,-.78),v(.57,-.86),v(.33,-1.03)),
+    ];
+    case'long':return[
+      ...quad('jacket',-15,v(-.45,-.45),v(-.08,-.48),v(-.04,-1.42),v(-.30,-1.08)),
+      ...quad('jacket',7,v(.08,-.48),v(.45,-.45),v(.30,-1.08),v(.04,-1.42)),
+      ...quad('jacket',-10,v(-.68,-2.28),v(-.08,-2.38),v(-.05,-2.24),v(-.61,-2.16)),
+      ...quad('jacket',4,v(.08,-2.38),v(.68,-2.28),v(.61,-2.16),v(.05,-2.24)),
+    ];
+    case'tactical':return[
+      ...rect('jacket',-14,-.32,-.72,.44,.32),...rect('jacket',7,.32,-.72,.44,.32),
+      ...rect('jacket',-18,-.31,-1.18,.38,.31),...rect('jacket',4,.31,-1.18,.38,.31),
+      ...rect('jacket',-11,-.84,-.88,.18,.25),...rect('jacket',8,.84,-.88,.18,.25),
+    ];
+    case'crop':return[
+      ...rect('jacket',-15,0,r.hemY+.05,1.06,.13),
+      ...quad('jacket',-10,v(-.47,-.47),v(-.10,-.47),v(-.20,-.94),v(-.50,-.75)),
+      ...quad('jacket',6,v(.10,-.47),v(.47,-.47),v(.50,-.75),v(.20,-.94)),
+      ...rect('jacket',-8,-.79,r.wristY+.04,.16,.12),...rect('jacket',6,.79,r.wristY+.04,.16,.12),
+    ];
+    case'tech':return[
+      ...quad('jacket',-16,v(-.61,-.49),v(-.09,-.49),v(-.16,-1.18),v(-.58,-1.36)),
+      ...quad('jacket',8,v(.09,-.49),v(.61,-.49),v(.58,-1.36),v(.16,-1.18)),
+      ...rect('jacket',-12,-.36,-1.58,.42,.24),...rect('jacket',5,.36,-1.58,.42,.24),
+      ...rect('jacket',10,0,-1.14,.07,1.36),
+    ];
+  }
+}
+function buildOutfit(id:string):Tri[]{const r=OUTFIT_RECIPES[id];if(!r)throw new Error(`Unknown clothing outfit ${id}`);return[...outfitBase(r),...outfitDetails(r)];}
 
-function blazer():Tri[]{return[
-  ...sleeves(.98,.77,-1.68,-7,2),...torso(.55,.49,.53,-1.79,0),
-  ...fan('jacket',-16,[[-.42,-.44],[-.08,-.48],[-.20,-1.16],[-.48,-.76]]),
-  ...fan('jacket',8,[[.42,-.44],[.08,-.48],[.20,-1.16],[.48,-.76]]),
-  ...quad('jacket',-12,[-.48,-1.32],[-.18,-1.32],[-.17,-1.39],[-.48,-1.39]),
-  ...quad('jacket',6,[[.18,-1.32],[.48,-1.32],[.48,-1.39],[.17,-1.39]),
-] as Tri[];}
-
-function bomber():Tri[]{return[
-  ...sleeves(1.08,.82,-1.58,-4,5),...torso(.60,.57,.58,-1.57,-1),
-  ...quad('jacket',-15,[-.58,-1.48],[.58,-1.48],[.55,-1.61],[-.55,-1.61]),
-  ...quad('jacket',-11,[-.84,-1.47],[-.68,-1.47],[-.66,-1.60],[-.82,-1.60]),
-  ...quad('jacket',4,[[.68,-1.47],[.84,-1.47],[.82,-1.60],[.66,-1.60]),
-  ...quad('jacket',-9,[-.50,-.77],[-.28,-.95],[-.33,-1.02],[-.55,-.84]),
-  ...quad('jacket',7,[[.50,-.77],[.28,-.95],[.33,-1.02],[.55,-.84]),
-] as Tri[];}
-
-function longCoat():Tri[]{return[
-  ...sleeves(.98,.75,-1.72,-8,2),
-  ...fan('jacket',-2,[[-.55,-.43],[.55,-.43],[.48,-1.20],[.72,-2.36],[.10,-2.42],[0,-1.18],[-.10,-2.42],[-.72,-2.36],[-.48,-1.20]]),
-  ...quad('jacket',-15,[-.45,-.44],[-.08,-.48],[-.04,-1.40],[-.30,-1.08]),
-  ...quad('jacket',7,[[.45,-.44],[.08,-.48],[.04,-1.40],[.30,-1.08]),
-  ...quad('jacket',-10,[-.72,-2.36],[-.10,-2.42],[-.07,-2.30],[-.65,-2.24]),
-  ...quad('jacket',4,[[.10,-2.42],[.72,-2.36],[.65,-2.24],[.07,-2.30]),
-] as Tri[];}
-
-function tacticalJacket():Tri[]{return[
-  ...sleeves(1.04,.80,-1.70,-6,4),...torso(.61,.58,.59,-1.83,-2),
-  ...quad('jacket',-14,[-.58,-.54],[-.08,-.54],[-.08,-.92],[-.54,-.88]),
-  ...quad('jacket',7,[[.08,-.54],[.58,-.54],[.54,-.88],[.08,-.92]),
-  ...quad('jacket',-18,[-.51,-1.00],[-.12,-1.00],[-.14,-1.35],[-.52,-1.31]),
-  ...quad('jacket',4,[[.12,-1.00],[.51,-1.00],[.52,-1.31],[.14,-1.35]),
-  ...quad('jacket',-12,[-.95,-.73],[-.77,-.79],[-.74,-1.02],[-.91,-.98]),
-  ...quad('jacket',8,[[.77,-.79],[.95,-.73],[.91,-.98],[.74,-1.02]),
-] as Tri[];}
-
-function croppedJacket():Tri[]{return[
-  ...sleeves(1.00,.78,-1.54,-5,4),...torso(.57,.53,.55,-1.28,0),
-  ...quad('jacket',-15,[-.55,-1.18],[.55,-1.18],[.52,-1.32],[-.52,-1.32]),
-  ...fan('jacket',-10,[[-.47,-.47],[-.10,-.47],[-.20,-.93],[-.50,-.75]]),
-  ...fan('jacket',6,[[.47,-.47],[.10,-.47],[.20,-.93],[.50,-.75]]),
-  ...quad('jacket',-8,[-.88,-1.37],[-.72,-1.40],[-.70,-1.54],[-.86,-1.51]),
-  ...quad('jacket',6,[[.72,-1.40],[.88,-1.37],[.86,-1.51],[.70,-1.54]),
-] as Tri[];}
-
-function techParka():Tri[]{return[
-  ...sleeves(1.10,.84,-1.72,-7,3),...torso(.64,.61,.63,-1.91,-1),
-  ...fan('jacket',-16,[[-.62,-.48],[-.09,-.48],[-.16,-1.16],[-.58,-1.35],[-.65,-.89]]),
-  ...fan('jacket',8,[[.62,-.48],[.09,-.48],[.16,-1.16],[.58,-1.35],[.65,-.89]]),
-  ...quad('jacket',-12,[-.58,-1.42],[-.18,-1.48],[-.16,-1.72],[-.60,-1.68]),
-  ...quad('jacket',5,[[.18,-1.48],[.58,-1.42],[.60,-1.68],[.16,-1.72]),
-  ...quad('jacket',10,[[-.05,-.50],[.05,-.50],[.04,-1.86],[-.04,-1.86]),
-] as Tri[];}
-
-const OUTFITS:Record<string,()=>Tri[]>={blazer,bomber,'long-coat':longCoat,'tactical-jacket':tacticalJacket,'cropped-jacket':croppedJacket,'tech-parka':techParka};
-
-const hoodOpenCollar=():Tri[]=>[
-  ...fan('hood',-5,[[-.44,-.44],[-.12,-.25],[-.02,-.48],[-.24,-.70]]),
-  ...fan('hood',4,[[.44,-.44],[.12,-.25],[.02,-.48],[.24,-.70]]),
-];
-const hoodStandCollar=():Tri[]=>[
-  ...quad('hood',-7,[-.42,-.45],[-.20,-.22],[-.12,-.55],[-.38,-.65]),...quad('hood',3,[[.20,-.22],[.42,-.45],[.38,-.65],[.12,-.55]),
-  ...quad('hood',-2,[-.20,-.22],[.20,-.22],[.12,-.55],[-.12,-.55]),
-];
-const hoodFurCollar=():Tri[]=>{
-  const out:Tri[]=[];for(let i=0;i<8;i++){const x0=-.54+i*.135,x1=x0+.15,y=-.46-(i%2)*.055;out.push(tri('hood',i%2?-9:8,[x0,-.43],[x1,-.43],[(x0+x1)/2,y-.22]));}return out;
-};
-const hoodDoubleCollar=():Tri[]=>[
-  ...hoodOpenCollar(),...quad('hood',-12,[-.50,-.48],[-.24,-.37],[-.16,-.58],[-.42,-.70]),...quad('hood',7,[[.24,-.37],[.50,-.48],[.42,-.70],[.16,-.58]),
-];
-const hoodHighWrap=():Tri[]=>[
-  ...quad('hood',-8,[-.46,-.46],[-.32,-.16],[.10,-.24],[-.08,-.62]),...quad('hood',4,[[-.10,-.24],[.32,-.16],[.46,-.46],[.08,-.62]),
-  tri('hood',-13,[-.32,-.16],[.32,-.16],[-.10,-.24]),
-];
-const hoodSplitLapel=():Tri[]=>[
-  ...fan('hood',-8,[[-.50,-.45],[-.10,-.24],[-.18,-.72],[-.45,-.85]]),...fan('hood',6,[[.50,-.45],[.10,-.24],[.18,-.72],[.45,-.85]]),
-];
-const HOODS:Record<string,()=>Tri[]>={'open-collar':hoodOpenCollar,'stand-collar':hoodStandCollar,'fur-collar':hoodFurCollar,'double-collar':hoodDoubleCollar,'high-wrap':hoodHighWrap,'split-lapel':hoodSplitLapel};
+function buildHood(id:string):Tri[]{
+  switch(id){
+    case'open-collar':return[
+      ...quad('hood',-6,v(-.46,-.44),v(-.12,-.25),v(-.02,-.48),v(-.25,-.70)),
+      ...quad('hood',5,v(.12,-.25),v(.46,-.44),v(.25,-.70),v(.02,-.48)),
+    ];
+    case'stand-collar':return[
+      ...quad('hood',-7,v(-.42,-.45),v(-.20,-.22),v(-.12,-.55),v(-.38,-.65)),
+      ...quad('hood',4,v(.20,-.22),v(.42,-.45),v(.38,-.65),v(.12,-.55)),
+      ...rect('hood',-2,0,-.39,.40,.30),
+    ];
+    case'fur-collar':{const out:Tri[]=[];for(let i=0;i<8;i++){const x=-.48+i*.137;out.push(tri('hood',i%2?-10:8,v(x,-.43),v(x+.16,-.43),v(x+.08,-.68-(i%2)*.04)));}return out;}
+    case'double-collar':return[...buildHood('open-collar'),...mirroredQuad('hood',-11,v(-.50,-.48),v(-.25,-.37),v(-.16,-.58),v(-.42,-.70))];
+    case'high-wrap':return[
+      ...quad('hood',-8,v(-.46,-.46),v(-.32,-.16),v(.10,-.24),v(-.08,-.62)),
+      ...quad('hood',4,v(-.10,-.24),v(.32,-.16),v(.46,-.46),v(.08,-.62)),
+      tri('hood',-13,v(-.32,-.16),v(.32,-.16),v(-.10,-.24)),
+    ];
+    case'split-lapel':return[
+      ...quad('hood',-8,v(-.50,-.45),v(-.10,-.24),v(-.18,-.72),v(-.45,-.85)),
+      ...quad('hood',6,v(.10,-.24),v(.50,-.45),v(.45,-.85),v(.18,-.72)),
+    ];
+    default:throw new Error(`Unknown clothing hood ${id}`);
+  }
+}
 
 const shirtBase=(neckX=.18,hem=-1.82):Tri[]=>[
-  tri('shirt',0,[[-neckX,-.42],[neckX,-.42],[.42,hem]]),tri('shirt',-6,[[-neckX,-.42],[.42,hem],[-.42,hem]]),
+  tri('shirt',0,v(-neckX,-.42),v(neckX,-.42),v(.42,hem)),tri('shirt',-6,v(-neckX,-.42),v(.42,hem),v(-.42,hem)),
 ];
-const SHIRTS:Record<string,()=>Tri[]>={
-  'dress-shirt':()=>[...shirtBase(.16),...fan('shirt',8,[[-.16,-.42],[0,-.62],[-.25,-.74]]),...fan('shirt',-7,[[.16,-.42],[0,-.62],[.25,-.74]]),...quad('shirt',9,[[-.025,-.58],[.025,-.58],[.022,-1.80],[-.022,-1.80])],
-  henley:()=>[...shirtBase(.20),...quad('shirt',8,[[-.08,-.43],[.08,-.43],[.07,-.84],[-.07,-.84]),...quad('shirt',-10,[[-.06,-.61],[.06,-.61],[.06,-.65],[-.06,-.65])],
-  sweater:()=>[...shirtBase(.23),...quad('shirt',-10,[[-.42,-1.68],[.42,-1.68],[.40,-1.82],[-.40,-1.82]),...quad('shirt',7,[[-.23,-.44],[.23,-.44],[.19,-.57],[-.19,-.57])],
-  'hoodie-inner':()=>[...shirtBase(.24),...quad('shirt',-12,[[-.24,-.43],[.24,-.43],[.18,-.63],[-.18,-.63]),...mirrorQuad('shirt',5,[-.18,-.54],[-.10,-.55],[-.12,-1.02],[-.16,-1.02])],
-  'vest-inner':()=>[...shirtBase(.14),...quad('shirt',-10,[[-.38,-.48],[-.18,-.43],[-.14,-1.75],[-.36,-1.80]),...quad('shirt',5,[[.18,-.43],[.38,-.48],[.36,-1.80],[.14,-1.75])],
-  'utility-top':()=>[...shirtBase(.20),...quad('shirt',-13,[[-.38,-.72],[-.08,-.72],[-.08,-1.03],[-.38,-1.03]),...quad('shirt',7,[[.08,-.72],[.38,-.72],[.38,-1.03],[.08,-1.03]),...quad('shirt',9,[[-.03,-.43],[.03,-.43],[.03,-1.78],[-.03,-1.78])],
-};
+function buildShirt(id:string):Tri[]{
+  switch(id){
+    case'dress-shirt':return[...shirtBase(.16),tri('shirt',8,v(-.16,-.42),v(0,-.62),v(-.25,-.74)),tri('shirt',-7,v(.16,-.42),v(.25,-.74),v(0,-.62)),...rect('shirt',9,0,-1.18,.05,1.22)];
+    case'henley':return[...shirtBase(.20),...rect('shirt',8,0,-.64,.16,.42),...rect('shirt',-10,0,-.63,.12,.04)];
+    case'sweater':return[...shirtBase(.23),...rect('shirt',-10,0,-1.74,.82,.14),...rect('shirt',7,0,-.50,.44,.13)];
+    case'hoodie-inner':return[...shirtBase(.24),...rect('shirt',-12,0,-.53,.48,.20),...mirroredQuad('shirt',5,v(-.18,-.54),v(-.10,-.55),v(-.12,-1.02),v(-.16,-1.02))];
+    case'vest-inner':return[...shirtBase(.14),...mirroredQuad('shirt',-9,v(-.38,-.48),v(-.18,-.43),v(-.14,-1.75),v(-.36,-1.80))];
+    case'utility-top':return[...shirtBase(.20),...rect('shirt',-13,-.23,-.87,.30,.31),...rect('shirt',7,.23,-.87,.30,.31),...rect('shirt',9,0,-1.10,.06,1.34)];
+    default:throw new Error(`Unknown clothing shirt ${id}`);
+  }
+}
 
-const strapStrip=(a:Vec2,b:Vec2,width=.07,shade=0):Tri[]=>{const dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy)||1,nx=-dy/len*width,ny=dx/len*width;return quad('strap',shade,[a[0]+nx,a[1]+ny],[a[0]-nx,a[1]-ny],[b[0]-nx,b[1]-ny],[b[0]+nx,b[1]+ny]);};
-const pouch=(x:number,y:number,w=.25,h=.34):Tri[]=>[
-  ...quad('strap',-8,[x-w/2,y+h/2],[x+w/2,y+h/2],[x+w/2,y-h/2],[x-w/2,y-h/2]),
-  ...quad('metal',8,[x-.04,y+.04],[x+.04,y+.04],[x+.04,y-.03],[x-.04,y-.03]),
-];
-const STRAPS:Record<string,()=>Tri[]>={
-  'chest-rig':()=>[...strapStrip([-.40,-.46],[-.12,-1.24],.075,-4),...strapStrip([.40,-.46],[.12,-1.24],.075,4),...strapStrip([-.34,-1.18],[.34,-1.18],.07,-8),...pouch(-.26,-1.10,.25,.30),...pouch(.26,-1.10,.25,.30)],
-  'shoulder-brace':()=>[...strapStrip([-.42,-.43],[.24,-1.56],.085,-5),...strapStrip([.38,-.46],[.42,-1.25],.055,4),...pouch(.37,-1.36,.22,.30)],
-  'belt-pack':()=>[...strapStrip([-.48,-1.46],[.48,-1.46],.065,-8),...pouch(-.32,-1.50,.28,.29),...pouch(.32,-1.50,.28,.29)],
-  'asymmetric-strap':()=>[...strapStrip([-.43,-.46],[.34,-1.68],.08,-5),...pouch(.25,-1.45,.24,.31)],
-  'tech-harness':()=>[...strapStrip([-.40,-.46],[-.08,-1.08],.06,-5),...strapStrip([.40,-.46],[.08,-1.08],.06,5),...strapStrip([-.08,-1.08],[-.32,-1.68],.06,-7),...strapStrip([.08,-1.08],[.32,-1.68],.06,6),...quad('metal',10,[[-.09,-1.02],[.09,-1.02],[.09,-1.18],[-.09,-1.18])],
-  'layered-pouch':()=>[...strapStrip([-.45,-1.28],[.45,-1.28],.055,-8),...pouch(-.38,-1.32,.24,.34),...pouch(-.12,-1.36,.22,.28),...pouch(.18,-1.34,.24,.32),...pouch(.40,-1.30,.20,.26)],
-};
+function strapStrip(a:Vec2,b:Vec2,width=.07,shade=0):Tri[]{const dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy)||1,nx=-dy/len*width,ny=dx/len*width;return quad('strap',shade,v(a[0]+nx,a[1]+ny),v(a[0]-nx,a[1]-ny),v(b[0]-nx,b[1]-ny),v(b[0]+nx,b[1]+ny));}
+function pouch(x:number,y:number,w=.25,h=.34):Tri[]{return[...rect('strap',-8,x,y,w,h),...rect('metal',8,x,y+.02,.08,.07)];}
+function buildStrap(id:string):Tri[]{
+  switch(id){
+    case'chest-rig':return[...strapStrip(v(-.40,-.46),v(-.12,-1.24),.075,-4),...strapStrip(v(.40,-.46),v(.12,-1.24),.075,4),...strapStrip(v(-.34,-1.18),v(.34,-1.18),.07,-8),...pouch(-.26,-1.10),...pouch(.26,-1.10)];
+    case'shoulder-brace':return[...strapStrip(v(-.42,-.43),v(.24,-1.56),.085,-5),...strapStrip(v(.38,-.46),v(.42,-1.25),.055,4),...pouch(.37,-1.36,.22,.30)];
+    case'belt-pack':return[...strapStrip(v(-.48,-1.46),v(.48,-1.46),.065,-8),...pouch(-.32,-1.50,.28,.29),...pouch(.32,-1.50,.28,.29)];
+    case'asymmetric-strap':return[...strapStrip(v(-.43,-.46),v(.34,-1.68),.08,-5),...pouch(.25,-1.45,.24,.31)];
+    case'tech-harness':return[...strapStrip(v(-.40,-.46),v(-.08,-1.08),.06,-5),...strapStrip(v(.40,-.46),v(.08,-1.08),.06,5),...strapStrip(v(-.08,-1.08),v(-.32,-1.68),.06,-7),...strapStrip(v(.08,-1.08),v(.32,-1.68),.06,6),...rect('metal',10,0,-1.10,.18,.16)];
+    case'layered-pouch':return[...strapStrip(v(-.45,-1.28),v(.45,-1.28),.055,-8),...pouch(-.38,-1.32,.24,.34),...pouch(-.12,-1.36,.22,.28),...pouch(.18,-1.34,.24,.32),...pouch(.40,-1.30,.20,.26)];
+    default:throw new Error(`Unknown clothing strap ${id}`);
+  }
+}
 
-const accentRect=(x:number,y:number,w:number,h:number,shade=0):Tri[]=>quad('accent',shade,[x-w/2,y+h/2],[x+w/2,y+h/2],[x+w/2,y-h/2],[x-w/2,y-h/2]);
-const ACCENTS:Record<string,()=>Tri[]>={
-  'panel-line':()=>[...quad('accent',2,[[-.48,-.73],[-.12,-.73],[-.12,-.78],[-.48,-.78]),...quad('accent',8,[[.12,-.73],[.48,-.73],[.48,-.78],[.12,-.78])],
-  'arm-band':()=>[...quad('accent',0,[[-.93,-.92],[-.73,-.98],[-.70,-1.08],[-.90,-1.02]),...quad('accent',5,[[.73,-.98],[.93,-.92],[.90,-1.02],[.70,-1.08])],
-  badge:()=>[...accentRect(.31,-.78,.20,.16,5),tri('accent',12,[.31,-.70],[.38,-.78],[.31,-.86]),tri('accent',-6,[.31,-.70],[.31,-.86],[.24,-.78])],
-  'zip-line':()=>[...quad('accent',6,[[-.035,-.46],[.035,-.46],[.028,-1.78],[-.028,-1.78]),...accentRect(0,-1.16,.12,.06,-5)],
-  'belt-buckle':()=>[...quad('accent',-4,[[-.47,-1.55],[.47,-1.55],[.47,-1.64],[-.47,-1.64]),...quad('metal',10,[[-.13,-1.50],[.13,-1.50],[.13,-1.69],[-.13,-1.69])],
-  'tech-emblem':()=>[tri('accent',8,[.27,-.72],[.43,-.86],[.32,-1.04]),tri('accent',-8,[.27,-.72],[.32,-1.04],[.18,-.89]),...accentRect(.305,-.88,.08,.08,14)],
-};
+function buildAccent(id:string):Tri[]{
+  switch(id){
+    case'panel-line':return[...rect('accent',2,-.30,-.75,.36,.05),...rect('accent',8,.30,-.75,.36,.05)];
+    case'arm-band':return[...quad('accent',0,v(-.93,-.92),v(-.73,-.98),v(-.70,-1.08),v(-.90,-1.02)),...quad('accent',5,v(.73,-.98),v(.93,-.92),v(.90,-1.02),v(.70,-1.08))];
+    case'badge':return[...rect('accent',5,.31,-.78,.20,.16),tri('accent',12,v(.31,-.69),v(.39,-.78),v(.31,-.88)),tri('accent',-6,v(.31,-.69),v(.31,-.88),v(.23,-.78))];
+    case'zip-line':return[...rect('accent',6,0,-1.14,.07,1.34),...rect('accent',-5,0,-1.16,.12,.06)];
+    case'belt-buckle':return[...rect('accent',-4,0,-1.60,.94,.09),...rect('metal',10,0,-1.60,.26,.19)];
+    case'tech-emblem':return[tri('accent',8,v(.27,-.70),v(.43,-.86),v(.32,-1.04)),tri('accent',-8,v(.27,-.70),v(.32,-1.04),v(.18,-.89)),...rect('accent',14,.305,-.88,.08,.08)];
+    default:throw new Error(`Unknown clothing accent ${id}`);
+  }
+}
 
 export const CLOTHING_PACK_V1_IDS={
-  outfit:Object.freeze(Object.keys(OUTFITS)),hood:Object.freeze(Object.keys(HOODS)),shirt:Object.freeze(Object.keys(SHIRTS)),strap:Object.freeze(Object.keys(STRAPS)),accent:Object.freeze(Object.keys(ACCENTS)),
+  outfit:['blazer','bomber','long-coat','tactical-jacket','cropped-jacket','tech-parka'],
+  hood:['open-collar','stand-collar','fur-collar','double-collar','high-wrap','split-lapel'],
+  shirt:['dress-shirt','henley','sweater','hoodie-inner','vest-inner','utility-top'],
+  strap:['chest-rig','shoulder-brace','belt-pack','asymmetric-strap','tech-harness','layered-pouch'],
+  accent:['panel-line','arm-band','badge','zip-line','belt-buckle','tech-emblem'],
 } as const;
 
 export function clothingPackV1Triangles(kind:ClothingPackV1Kind,id:string):readonly ClothingPackV1Triangle[]{
-  const table:Record<ClothingPackV1Kind,Record<string,()=>Tri[]>>={outfit:OUTFITS,hood:HOODS,shirt:SHIRTS,strap:STRAPS,accent:ACCENTS};
-  const build=table[kind][id];if(!build)throw new Error(`No Clothing Variation Pack v1 geometry for ${kind}:${id}`);return build();
+  if(kind==='outfit')return buildOutfit(id);
+  if(kind==='hood')return buildHood(id);
+  if(kind==='shirt')return buildShirt(id);
+  if(kind==='strap')return buildStrap(id);
+  return buildAccent(id);
 }
