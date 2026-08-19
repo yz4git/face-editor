@@ -18,7 +18,7 @@ export interface MotionPosePreset{
   stance:number;
 }
 
-export const DEFAULT_MOTION_STATE:CharacterMotionState={version:1,pose:'idle',action:'breathe',playing:true,autoBlink:true};
+export const DEFAULT_MOTION_STATE:CharacterMotionState={version:1,pose:'idle',action:'breathe',playing:false,autoBlink:true};
 
 export const POSE_PRESETS:Record<PoseId,MotionPosePreset>={
   idle:{id:'idle',label:'IDLE',description:'Balanced neutral stance',bodyX:0,bodyY:0,torsoLean:0,headTilt:0,headX:0,headY:0,leftArm:0,rightArm:0,stance:0},
