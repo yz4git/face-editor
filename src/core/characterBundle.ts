@@ -1,4 +1,5 @@
 import { exportCharacterBundle } from './compileCharacter';
+import { CUTSCENE_TEMPLATES, cloneCutsceneProject, normalizeCutsceneProject } from './cutsceneSystem';
 import { DEFAULT_EXPRESSION_SET, EXPRESSION_ORDER, cloneExpressionSet } from './expressionSystem';
 import { DEFAULT_MOTION_STATE, normalizeMotionState } from './motionSystem';
 import type {
@@ -6,6 +7,7 @@ import type {
   CharacterDefinition,
   CharacterExpressionSet,
   CharacterMotionState,
+  CutsceneProject,
   ExpressionId,
   ExpressionPresetDefinition,
   ExpressionTransformDelta,
@@ -133,6 +135,16 @@ function normalizeMotion(value:unknown):CharacterMotionState{
   return normalizeMotionState(value as unknown as CharacterMotionState);
 }
 
+function normalizeCutscene(value:unknown):CutsceneProject|undefined{
+  if(value===undefined)return undefined;
+  assertRecord(value,'cutscene');
+  if(value.version!==1)fail('cutscene.version must be 1');
+  if(typeof value.title!=='string')fail('cutscene.title must be a string');
+  if(!isFiniteNumber(value.durationMs))fail('cutscene.durationMs must be finite');
+  assertArray(value.cues,'cutscene.cues');
+  return normalizeCutsceneProject(value as unknown as CutsceneProject);
+}
+
 function validateMesh(value:unknown){
   assertRecord(value,'mesh');
   if(value.version!==1)fail('mesh.version must be 1');
@@ -159,7 +171,7 @@ export function parseCharacterBundle(input:unknown):CharacterBundle{
     if(input.formatVersion!==1)fail('formatVersion must be 1');
     const definition=validateDefinition(required(input,'definition'));
     validateMesh(required(input,'mesh'));
-    const expressions=normalizeExpressions(input.expressions),motion=normalizeMotion(input.motion);
+    const expressions=normalizeExpressions(input.expressions),motion=normalizeMotion(input.motion),cutscene=normalizeCutscene(input.cutscene);
     return{
       format:'face-editor-polygon-character',
       formatVersion:1,
@@ -167,6 +179,7 @@ export function parseCharacterBundle(input:unknown):CharacterBundle{
       mesh:structuredClone(input.mesh) as CharacterBundle['mesh'],
       expressions,
       motion,
+      ...(cutscene?{cutscene}:{}),
     };
   }
   if('baseStyle' in input&&'colors' in input&&'transforms' in input){
@@ -187,3 +200,4 @@ export function expressionStateForBundle(bundle:CharacterBundle){
 }
 
 export function motionStateForBundle(bundle:CharacterBundle){return normalizeMotionState(bundle.motion??DEFAULT_MOTION_STATE);}
+export function cutsceneStateForBundle(bundle:CharacterBundle){return cloneCutsceneProject(bundle.cutscene??CUTSCENE_TEMPLATES.intro);}
