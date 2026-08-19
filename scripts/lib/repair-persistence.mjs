@@ -6,7 +6,7 @@ const IDENTITY={x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0};
 
 const finite=value=>Number.isFinite(Number(value));
 const round=value=>Math.round(Number(value)*1e8)/1e8;
-const stable=value=>JSON.stringify(value,Object.keys(value??{}).sort());
+const stable=value=>JSON.stringify(value??{});
 
 export function readMarkedJson(source,markers){
   const start=source.indexOf(markers.start),end=source.indexOf(markers.end);
