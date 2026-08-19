@@ -24,7 +24,7 @@ test('CharacterBundle SAVE/LOAD and JSON IMPORT restore body and bundled express
   await expect(page.locator('.expression-bar [data-expression="angry"]')).toHaveClass(/selected/);
   await expect(page.locator('input[data-body-prop="height"]')).toHaveValue('1.2');
   await expect(page.locator('#hair-options .part-card.selected')).toHaveAttribute('data-id',savedHair??'');
-  await expect(page.locator('#save-status')).toHaveValue(/LOADED SLOT 2/);
+  await expect(page.locator('#save-status')).toHaveText(/LOADED SLOT 2/);
 
   const downloadPromise=page.waitForEvent('download');
   await page.locator('button[data-action="export"]').click();
@@ -37,5 +37,5 @@ test('CharacterBundle SAVE/LOAD and JSON IMPORT restore body and bundled express
   await page.locator('#bundle-import-input').setInputFiles(path!);
   await expect(page.locator('.expression-bar [data-expression="angry"]')).toHaveClass(/selected/);
   await expect(page.locator('input[data-body-prop="height"]')).toHaveValue('1.2');
-  await expect(page.locator('#save-status')).toHaveValue(/EXPRESSIONS RESTORED/);
+  await expect(page.locator('#save-status')).toHaveText(/EXPRESSIONS RESTORED/);
 });
