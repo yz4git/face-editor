@@ -22,11 +22,13 @@ async function stopPreview(child){if(child.exitCode!==null)return;child.kill('SI
 async function runAudit(pass){
   await fs.rm(auditOutput,{recursive:true,force:true});await fs.mkdir(auditOutput,{recursive:true});
   await run('npm',['run','build']);
-  const preview=spawn('npm',['run','preview','--','--host','127.0.0.1','--port',String(options.port)],{cwd:root,env:process.env,stdio:'inherit',shell:false}),url=`http://127.0.0.1:${options.port}/`;
-  try{await waitForPreview(url);await run('npx',['playwright','test','visual-audit/visual-audit.spec.ts','--reporter=line'],{env:{FACE_EDITOR_ALLOW_REPAIRABLE_CRITICAL:'1'}});}finally{await stopPreview(preview);}
+  const preview=spawn('npm',['run','preview','--','--host','127.0.0.1','--port',String(options.port)],{cwd:root,env:process.env,stdio:'inherit',shell:false}),url=`http://127.0.0.1:${options.port}/`;let auditExit=0;
+  try{await waitForPreview(url);auditExit=await run('npx',['playwright','test','visual-audit/visual-audit.spec.ts','--reporter=line'],{allowFailure:true});}finally{await stopPreview(preview);}
+  const anomalyPath=path.join(auditOutput,'anomaly-report.json'),repairPath=path.join(auditOutput,'repair-report.json');
+  let anomaly,repair;try{anomaly=JSON.parse(await fs.readFile(anomalyPath,'utf8'));repair=JSON.parse(await fs.readFile(repairPath,'utf8'));}catch(error){if(auditExit!==0)throw new Error(`Visual audit failed before repair reports were produced: ${error?.message??error}`);throw error;}
+  if(auditExit!==0&&(anomaly.critical??[]).length===0)throw new Error('Visual audit failed for a reason other than a repairable critical anomaly.');
   const passDir=path.join(historyRoot,`pass-${pass}`);await fs.rm(passDir,{recursive:true,force:true});await fs.mkdir(historyRoot,{recursive:true});await fs.cp(auditOutput,passDir,{recursive:true});
-  const anomaly=JSON.parse(await fs.readFile(path.join(auditOutput,'anomaly-report.json'),'utf8')),repair=JSON.parse(await fs.readFile(path.join(auditOutput,'repair-report.json'),'utf8'));
-  return{anomaly,repair,passDir};
+  return{anomaly,repair,passDir,auditExit};
 }
 
 async function applyVisual(repair){const current=await readGeneratedData(transformFile,TRANSFORM_MARKERS),merged=mergeAcceptedVisualRepairs(current,repair);if(merged.blocked.length)throw new Error(`Closed-loop transform safety lock blocked: ${merged.blocked.map(item=>`${item.key}: ${item.reason}`).join(', ')}`);if(merged.changed)await writeGeneratedData(transformFile,TRANSFORM_MARKERS,merged.data);return merged;}
@@ -41,7 +43,7 @@ async function applyVector(pass,anomaly){
 
 await fs.rm(historyRoot,{recursive:true,force:true});await fs.mkdir(historyRoot,{recursive:true});const seen=new Set([await hash()]);let mutationPasses=0,stable=false;
 for(let pass=0;pass<=options.maxPasses;pass++){
-  const audited=await runAudit(pass),criticalCount=(audited.anomaly.critical??[]).length,visual=await applyVisual(audited.repair),record={pass,criticalCount,visualApplied:visual.applied,visualGeometryRequests:visual.geometryRequests,vectorApplied:[],stateChanged:false};
+  const audited=await runAudit(pass),criticalCount=(audited.anomaly.critical??[]).length,visual=await applyVisual(audited.repair),record={pass,criticalCount,auditExit:audited.auditExit,visualApplied:visual.applied,visualGeometryRequests:visual.geometryRequests,vectorApplied:[],stateChanged:false};
   if(visual.changed){record.stateChanged=true;mutationPasses++;history.push(record);if(pass===options.maxPasses)throw new Error(`Closed-loop reached max passes (${options.maxPasses}) with another accepted visual repair pending verification.`);const state=await hash();if(seen.has(state))throw new Error('Closed-loop detected a repeated generated repair state. Aborting to prevent oscillation.');seen.add(state);continue;}
   if(criticalCount>0){const vector=await applyVector(pass,audited.anomaly);record.vectorApplied=vector.applied??[];if(vector.changed){record.stateChanged=true;mutationPasses++;history.push(record);if(pass===options.maxPasses)throw new Error(`Closed-loop reached max passes (${options.maxPasses}) with repaired geometry pending verification.`);const state=await hash();if(seen.has(state))throw new Error('Closed-loop detected a repeated geometry repair state. Aborting to prevent oscillation.');seen.add(state);continue;}history.push(record);throw new Error(`Closed-loop stopped with ${criticalCount} unresolved critical visual anomaly/anomalies${options.manifest?' after vector repair':' and no --manifest was supplied for selective re-vectorization'}.`);}
   history.push(record);stable=true;break;
