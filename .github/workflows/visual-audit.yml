@@ -4,6 +4,25 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      manifest_path:
+        description: 'Optional repository-relative authoring manifest for critical geometry re-vectorization'
+        required: false
+        type: string
+        default: ''
+      baseline_metrics:
+        description: 'Optional repository-relative baseline vectorizer metrics for source-space quality locking'
+        required: false
+        type: string
+        default: ''
+      apply_repairs:
+        description: 'Commit stable generated repair overlays back to the selected branch'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
 
 jobs:
   canvas2d-audit:
@@ -14,23 +33,45 @@ jobs:
         with:
           node-version: '22.12.0'
       - run: npm install
-      - run: npm run build
       - run: npm install --no-save @playwright/test@1.55.0
       # GitHub-hosted Ubuntu already carries Chromium's runtime libraries. Installing the
       # browser only avoids a slow apt/font reinstall on every 92-part visual-audit run.
       - run: npx playwright install chromium
-      - name: Start preview
+      - name: Run bounded closed-loop visual repair
+        shell: bash
         run: |
-          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/face-editor-preview.log 2>&1 &
-          echo $! > /tmp/face-editor-preview.pid
-          for i in {1..30}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
-          cat /tmp/face-editor-preview.log
-          exit 1
-      - name: Run Canvas2D visual audit
-        run: npx playwright test visual-audit/visual-audit.spec.ts --reporter=line
+          EXTRA=(--max-passes 3)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.manifest_path }}" ]; then
+            EXTRA+=(--manifest "${{ inputs.manifest_path }}")
+          fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.baseline_metrics }}" ]; then
+            EXTRA+=(--baseline-metrics "${{ inputs.baseline_metrics }}")
+          fi
+          npm run repair:closed-loop -- "${EXTRA[@]}"
+      - name: Record generated repair patch
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p visual-audit/output
+          git diff -- src/data/generated/autoRepairOverrides.ts src/data/generated/autoRepairGeometry.ts > visual-audit/output/generated-repair.patch || true
+      - name: Commit stable generated repairs
+        if: github.event_name == 'workflow_dispatch' && inputs.apply_repairs == true
+        shell: bash
+        run: |
+          git add src/data/generated/autoRepairOverrides.ts src/data/generated/autoRepairGeometry.ts
+          if git diff --cached --quiet; then
+            echo 'No accepted generated repairs to persist.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Apply closed-loop generated part repairs'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: face-editor-visual-audit
-          path: visual-audit/output/
+          path: |
+            visual-audit/output/
+            visual-audit/closed-loop/
           if-no-files-found: warn
