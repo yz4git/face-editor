@@ -30,13 +30,18 @@ const motionPanel=new MotionPanel(root,{
 });
 editor.setMotionRestoreHandler(state=>motionPanel.applyMotionState(state));
 
-new CutscenePanel(root,{
+const cutscenePanel=new CutscenePanel(root,{
+  getCharacter:()=>editor.getCharacterDefinition(),
+  getExpressionSet:()=>expressionPanel.getExpressionSet(),
   getExpression:()=>expressionPanel.getActiveExpression(),
-  applyExpression:(expression)=>expressionPanel.applyExpressionState(expression,expressionPanel.getExpressionSet()),
+  driveExpression:(expression)=>expressionPanel.driveCutscene(expression),
+  releaseExpression:()=>expressionPanel.releaseCutsceneDrive(),
   getMotion:()=>motionPanel.getMotionState(),
   driveMotion:(pose,action,timeMs,playing)=>motionPanel.driveCutscene(pose,action,timeMs,playing),
   releaseMotion:()=>motionPanel.releaseCutsceneDrive(),
+  setProject:(project)=>editor.setCutsceneExportState(project),
 });
+editor.setCutsceneRestoreHandler(project=>cutscenePanel.applyProject(project));
 
 new FactoryPanel(root,{
   getCharacter:()=>editor.getCharacterDefinition(),
