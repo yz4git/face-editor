@@ -26,6 +26,12 @@ export interface PartTransform {
   spacing?: number;
 }
 
+export interface BodyProportions {
+  height: number;
+  build: number;
+  shoulders: number;
+}
+
 export interface ExpressionTransformDelta {
   x?: number;
   y?: number;
@@ -83,6 +89,7 @@ export interface CharacterDefinition {
   browStyle: BrowStyleId;
   noseStyle: NoseStyleId;
   mouthStyle: MouthStyleId;
+  bodyProportions?: BodyProportions;
   colors: {
     skin: string;
     hair: string;
