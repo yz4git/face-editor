@@ -1,5 +1,6 @@
 import type { Vec2 } from '../core/types';
 import { OUTFIT_COMPONENT_GZIP } from './generated/outfitComponentGzip';
+import { autoRepairGeometry } from './generated/autoRepairGeometry';
 
 export type OutfitComponentKind='hood'|'shirt'|'strap'|'accent';
 export type OutfitComponentRole='hood'|'shirt'|'strap'|'metal'|'accent';
@@ -45,6 +46,7 @@ for(const[key,[start,count]]of Object.entries(INDEX)){
 }
 
 export function generatedOutfitComponentTriangles(kind:OutfitComponentKind,id:string):readonly OutfitComponentTriangle[]{
+  const override=autoRepairGeometry(kind,id);if(override){return override.triangles.map(triangle=>{const role=triangle.role as OutfitComponentRole;if(!ROLES.includes(role))throw new Error(`Unknown auto-repair component role ${triangle.role} for ${kind}:${id}`);return{role,shade:triangle.shade,points:triangle.points};});}
   const value=PARTS.get(`${kind}:${id}`);if(!value)throw new Error(`Unknown generated outfit component ${kind}:${id}`);return value;
 }
 export function generatedOutfitComponentTriangleCount(kind:OutfitComponentKind,id:string):number{return generatedOutfitComponentTriangles(kind,id).length;}
