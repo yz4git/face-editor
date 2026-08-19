@@ -37,8 +37,7 @@ test('Expression System switches non-destructive previews, exports the set, and 
 
   await bar.locator('[data-expression="happy"]').click();
   const hairBefore=await page.locator('#hair-options .part-card.selected').getAttribute('data-id');
-  const otherHair=page.locator('#hair-options .part-card').filter({hasNot:page.locator('.selected')}).first();
-  await otherHair.click();
+  await page.locator('#hair-options .part-card:not(.selected)').first().click();
   await expect(bar.locator('[data-expression="happy"]')).toHaveClass(/selected/);
   const hairAfter=await page.locator('#hair-options .part-card.selected').getAttribute('data-id');
   expect(hairAfter).not.toBe(hairBefore);
