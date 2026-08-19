@@ -74,4 +74,12 @@ describe('generated part auto fitting',()=>{
     expectCompiledVariants('nose',Object.keys(NOSE_PARTS) as (keyof typeof NOSE_PARTS)[],(character,id)=>{character.noseStyle=id;});
     expectCompiledVariants('mouth',Object.keys(MOUTH_PARTS) as (keyof typeof MOUTH_PARTS)[],(character,id)=>{character.mouthStyle=id;});
   });
+
+  it('clips the source-sheet triangle accent artifact above the torso',()=>{
+    const character=structuredClone(DEFAULT_CHARACTER);character.accentStyle='triangle';
+    const mesh=compileCharacter(character),accent=mesh.layers.find(layer=>layer.id==='accent');
+    expect(accent).toBeDefined();expect(accent!.positions.length).toBeGreaterThan(0);
+    let maxY=-Infinity;for(let i=1;i<accent!.positions.length;i+=3)maxY=Math.max(maxY,accent!.positions[i]);
+    expect(maxY).toBeLessThanOrEqual(-.28+1e-6);
+  });
 });
