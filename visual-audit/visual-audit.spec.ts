@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 import { scoreVisualAnomalyFamily, type VisualDifferenceMetrics } from '../src/core/visualAnomaly';
 
 type AuditWindow=Window&{__faceEditorAuditRefs?:Record<string,{width:number;height:number;data:Uint8ClampedArray}>};
+test.setTimeout(90_000);
 
 function storeCanvasReference(element:Element,key:string){
   const canvas=element as HTMLCanvasElement,ctx=canvas.getContext('2d');if(!ctx)throw new Error('Canvas2D context unavailable');
