@@ -14,7 +14,7 @@ export class ExpressionPanel{
   private host:HTMLElement;
   private set=cloneExpressionSet(DEFAULT_EXPRESSION_SET);
 
-  constructor(private root:HTMLElement,private bridge:ExpressionEditorBridge){
+  constructor(root:HTMLElement,private bridge:ExpressionEditorBridge){
     const preview=root.querySelector<HTMLElement>('.preview-panel');
     if(!preview)throw new Error('Expression preview host missing');
     this.host=document.createElement('section');
