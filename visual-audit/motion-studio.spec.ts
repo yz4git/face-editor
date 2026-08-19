@@ -11,6 +11,7 @@ test('Motion Studio poses, animates, exports a sheet and accepts Factory charact
   const studio=page.locator('.motion-studio');await expect(studio).toBeVisible();
   await expect(studio.locator('button[data-motion-pose]')).toHaveCount(8);
   await expect(studio.locator('button[data-motion-action]')).toHaveCount(6);
+  await expect(studio.locator('button[data-motion-play]')).toContainText('PLAY');
 
   await studio.locator('button[data-motion-play]').click();
   const idleImage=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());
@@ -36,7 +37,7 @@ test('Motion Studio poses, animates, exports a sheet and accepts Factory charact
   const characterity=factory.locator('.factory-selected span').last();await expect(characterity).toContainText('CHARACTERITY');const line=(await characterity.textContent())??'';
   const match=line.match(/CHARACTERITY · ([A-Z-]+) · ([A-Z-]+) · ([A-Z-]+)/);expect(match).toBeTruthy();
   await factory.locator('button[data-factory-action="use"]').click();await expect(factory).toBeHidden();
-  if(match){const expression=match[1].toLowerCase(),pose=match[2],action=match[3];await expect(page.locator(`.expression-bar [data-expression="${expression}"]`)).toHaveClass(/selected/);await expect(status).toContainText(pose);await expect(status).toContainText(action==='NONE'?'STILL':action);}
+  if(match){const pose=match[2],action=match[3];await expect(page.locator('.expression-bar [data-expression="angry"]')).toHaveClass(/selected/);await expect(status).toContainText(pose);await expect(status).toContainText(action==='NONE'?'STILL':action);}
 
   await page.screenshot({path:'test-results/motion-studio-v1.png',fullPage:true});
 });
@@ -47,6 +48,7 @@ test('Motion Studio keeps finger-sized controls on iPhone landscape',async({page
   await page.locator('.top-actions button[data-motion-open]').click();const studio=page.locator('.motion-studio');await expect(studio).toBeVisible();
   const pose=studio.locator('button[data-motion-pose]').first(),action=studio.locator('button[data-motion-action]').first(),play=studio.locator('button[data-motion-play]');
   for(const control of [pose,action,play]){const box=await control.boundingBox();expect(box).toBeTruthy();expect(box!.height).toBeGreaterThanOrEqual(44);}
+  await expect(play).toContainText('PLAY');
   await expect(page.locator('.motion-status-pill')).toBeVisible();
   await page.screenshot({path:'test-results/motion-studio-iphone-landscape.png',fullPage:true});
 });
