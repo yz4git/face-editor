@@ -24,11 +24,11 @@ const MOTION_POSES = new Set<PoseId>(['idle','relax','confident','cute','cool','
 const MOTION_ACTIONS = new Set<MotionActionId>(['none','breathe','blink','talk','wave','walk','run']);
 const STYLE_VALUES:Record<string,readonly string[]> = {
   baseStyle: ['female', 'male'],
-  outfitStyle: ['hooded', 'high-collar', 'zip-collar', 'drawstring', 'short-sleeve', 'vest'],
-  hoodStyle: ['folded', 'drawstring', 'sharp', 'high', 'wide', 'wing'],
-  shirtStyle: ['tee', 'long-sleeve', 'tank', 'three-quarter', 'turtleneck', 'sleeveless-high'],
-  strapStyle: ['simple', 'padded', 'single-pouch', 'double-pouch', 'cross', 'y-harness'],
-  accentStyle: ['diamond', 'long-strip', 'point-strip', 'corner', 'chevron', 'slash', 'taper', 'triangle'],
+  outfitStyle: ['hooded', 'high-collar', 'zip-collar', 'drawstring', 'short-sleeve', 'vest', 'blazer', 'bomber', 'long-coat', 'tactical-jacket', 'cropped-jacket', 'tech-parka'],
+  hoodStyle: ['folded', 'drawstring', 'sharp', 'high', 'wide', 'wing', 'open-collar', 'stand-collar', 'fur-collar', 'double-collar', 'high-wrap', 'split-lapel'],
+  shirtStyle: ['tee', 'long-sleeve', 'tank', 'three-quarter', 'turtleneck', 'sleeveless-high', 'dress-shirt', 'henley', 'sweater', 'hoodie-inner', 'vest-inner', 'utility-top'],
+  strapStyle: ['simple', 'padded', 'single-pouch', 'double-pouch', 'cross', 'y-harness', 'chest-rig', 'shoulder-brace', 'belt-pack', 'asymmetric-strap', 'tech-harness', 'layered-pouch'],
+  accentStyle: ['diamond', 'long-strip', 'point-strip', 'corner', 'chevron', 'slash', 'taper', 'triangle', 'panel-line', 'arm-band', 'badge', 'zip-line', 'belt-buckle', 'tech-emblem'],
   hairStyle: ['ponytail', 'bob', 'side-tail', 'twin-tail', 'braid', 'long', 'wavy', 'short-spike', 'bun', 'half-up'],
   faceShape: ['soft', 'oval', 'angular', 'round', 'square', 'pointed', 'long-oval', 'hex', 'diamond', 'tapered'],
   eyeStyle: ['bright', 'determined', 'sharp', 'round', 'soft', 'sleepy', 'sparkle', 'closed', 'narrow', 'side-glance'],
