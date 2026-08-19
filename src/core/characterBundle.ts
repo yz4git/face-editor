@@ -1,19 +1,25 @@
 import { exportCharacterBundle } from './compileCharacter';
 import { DEFAULT_EXPRESSION_SET, EXPRESSION_ORDER, cloneExpressionSet } from './expressionSystem';
+import { DEFAULT_MOTION_STATE, normalizeMotionState } from './motionSystem';
 import type {
   CharacterBundle,
   CharacterDefinition,
   CharacterExpressionSet,
+  CharacterMotionState,
   ExpressionId,
   ExpressionPresetDefinition,
   ExpressionTransformDelta,
+  MotionActionId,
   PartTransform,
+  PoseId,
 } from './types';
 import { normalizeCharacter } from '../data/parts';
 
 type UnknownRecord = Record<string, unknown>;
 
 const EXPRESSION_IDS = new Set<ExpressionId>(EXPRESSION_ORDER);
+const MOTION_POSES = new Set<PoseId>(['idle','relax','confident','cute','cool','fight','run','jump']);
+const MOTION_ACTIONS = new Set<MotionActionId>(['none','breathe','blink','talk','wave','walk','run']);
 const STYLE_VALUES:Record<string,readonly string[]> = {
   baseStyle: ['female', 'male'],
   outfitStyle: ['hooded', 'high-collar', 'zip-collar', 'drawstring', 'short-sleeve', 'vest'],
@@ -116,6 +122,17 @@ function normalizeExpressions(value:unknown):{active:ExpressionId;set:CharacterE
   };
 }
 
+function normalizeMotion(value:unknown):CharacterMotionState{
+  if(value===undefined)return structuredClone(DEFAULT_MOTION_STATE);
+  assertRecord(value,'motion');
+  if(value.version!==1)fail('motion.version must be 1');
+  if(typeof value.pose!=='string'||!MOTION_POSES.has(value.pose as PoseId))fail('motion.pose is not supported');
+  if(typeof value.action!=='string'||!MOTION_ACTIONS.has(value.action as MotionActionId))fail('motion.action is not supported');
+  if(typeof value.playing!=='boolean')fail('motion.playing must be boolean');
+  if(typeof value.autoBlink!=='boolean')fail('motion.autoBlink must be boolean');
+  return normalizeMotionState(value as unknown as CharacterMotionState);
+}
+
 function validateMesh(value:unknown){
   assertRecord(value,'mesh');
   if(value.version!==1)fail('mesh.version must be 1');
@@ -142,18 +159,18 @@ export function parseCharacterBundle(input:unknown):CharacterBundle{
     if(input.formatVersion!==1)fail('formatVersion must be 1');
     const definition=validateDefinition(required(input,'definition'));
     validateMesh(required(input,'mesh'));
-    const expressions=normalizeExpressions(input.expressions);
+    const expressions=normalizeExpressions(input.expressions),motion=normalizeMotion(input.motion);
     return{
       format:'face-editor-polygon-character',
       formatVersion:1,
       definition,
       mesh:structuredClone(input.mesh) as CharacterBundle['mesh'],
       expressions,
+      motion,
     };
   }
   if('baseStyle' in input&&'colors' in input&&'transforms' in input){
-    const definition=validateDefinition(input);
-    return exportCharacterBundle(definition,{activeExpression:'neutral',expressionSet:DEFAULT_EXPRESSION_SET});
+    const definition=validateDefinition(input),bundle=exportCharacterBundle(definition,{activeExpression:'neutral',expressionSet:DEFAULT_EXPRESSION_SET});bundle.motion=structuredClone(DEFAULT_MOTION_STATE);return bundle;
   }
   return fail('expected a face-editor-polygon-character bundle');
 }
@@ -168,3 +185,5 @@ export function expressionStateForBundle(bundle:CharacterBundle){
     set:cloneExpressionSet(bundle.expressions?.set??DEFAULT_EXPRESSION_SET),
   };
 }
+
+export function motionStateForBundle(bundle:CharacterBundle){return normalizeMotionState(bundle.motion??DEFAULT_MOTION_STATE);}
