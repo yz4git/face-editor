@@ -1,10 +1,11 @@
 import type { CharacterDefinition } from '../core/types';
 import { FACTORY_STYLES, createVariationBatch, generateFactoryBatch, type FactoryCandidate, type FactoryLock, type FactoryStyleId } from '../core/characterFactory';
+import { factoryMotionProfile, type FactoryMotionProfile } from '../core/factoryMotion';
 import { selectFactoryDisplayCandidates } from '../core/factoryDisplayGate';
 import { renderFactoryThumbnail } from '../render/FactoryThumbnailRenderer';
 
-interface FactoryBridge{getCharacter():CharacterDefinition;applyCharacter(definition:CharacterDefinition):void}
-interface SavedFactoryCharacter{savedAt:string;seed:string;style:FactoryStyleId;scores:FactoryCandidate['scores'];definition:CharacterDefinition;signature:string}
+interface FactoryBridge{getCharacter():CharacterDefinition;applyCharacter(definition:CharacterDefinition,motion:FactoryMotionProfile):void}
+interface SavedFactoryCharacter{savedAt:string;seed:string;style:FactoryStyleId;scores:FactoryCandidate['scores'];definition:CharacterDefinition;signature:string;motion:FactoryMotionProfile}
 const FAVORITES_KEY='face-editor:factory:favorites:v1';
 const clone=<T>(value:T):T=>structuredClone(value);
 
@@ -60,17 +61,17 @@ export class FactoryPanel{
     this.candidates=this.buildSafeBatch(variation,anchor,locks);
     this.selected=0;this.render();
   }
-  private useSelected(){const candidate=this.candidates[this.selected];if(!candidate)return;this.bridge.applyCharacter(clone(candidate.definition));this.hide();}
+  private useSelected(){const candidate=this.candidates[this.selected];if(!candidate)return;this.bridge.applyCharacter(clone(candidate.definition),factoryMotionProfile(candidate.style,candidate.seed));this.hide();}
   private readFavorites():SavedFactoryCharacter[]{try{const value=JSON.parse(localStorage.getItem(FAVORITES_KEY)??'[]');return Array.isArray(value)?value:[];}catch{return[];}}
-  private keepSelected(){const candidate=this.candidates[this.selected];if(!candidate)return;const favorites=this.readFavorites().filter(item=>item.signature!==candidate.signature);favorites.unshift({savedAt:new Date().toISOString(),seed:candidate.seed,style:candidate.style,scores:candidate.scores,definition:clone(candidate.definition),signature:candidate.signature});localStorage.setItem(FAVORITES_KEY,JSON.stringify(favorites.slice(0,48)));this.render('KEPT — seed and CharacterDefinition saved locally');}
+  private keepSelected(){const candidate=this.candidates[this.selected];if(!candidate)return;const favorites=this.readFavorites().filter(item=>item.signature!==candidate.signature),motion=factoryMotionProfile(candidate.style,candidate.seed);favorites.unshift({savedAt:new Date().toISOString(),seed:candidate.seed,style:candidate.style,scores:candidate.scores,definition:clone(candidate.definition),signature:candidate.signature,motion});localStorage.setItem(FAVORITES_KEY,JSON.stringify(favorites.slice(0,48)));this.render('KEPT — character + motion profile saved locally');}
 
   private render(message=''){
     if(!this.open&&this.panel.hidden)return;
-    const selected=this.candidates[this.selected],favoriteCount=this.readFavorites().length,lockOrder:FactoryLock[]=['face','hair','outfit','colors'];
+    const selected=this.candidates[this.selected],favoriteCount=this.readFavorites().length,lockOrder:FactoryLock[]=['face','hair','outfit','colors'],motion=selected?factoryMotionProfile(selected.style,selected.seed):null;
     this.panel.innerHTML=`
       <div class="factory-shell">
         <header class="factory-header">
-          <div><span class="factory-kicker">CHARACTER FACTORY v1</span><h1>QUALITY-GATED CHARACTER GENERATOR</h1><p>Generate many internally, then show only the strongest and most different candidates.</p></div>
+          <div><span class="factory-kicker">CHARACTER FACTORY v1 + MOTION</span><h1>QUALITY-GATED CHARACTER GENERATOR</h1><p>Generate appearance, silhouette and a reproducible expression / pose / action profile.</p></div>
           <button class="factory-close" data-factory-action="close" aria-label="Close factory">×</button>
         </header>
         <div class="factory-controls">
@@ -79,16 +80,16 @@ export class FactoryPanel{
           <div class="factory-control-group"><label>VARIATION LOCKS</label><div class="factory-lock-row">${lockOrder.map(lock=>`<button data-factory-lock="${lock}" class="${this.locks.has(lock)?'selected':''}">${lock.toUpperCase()}</button>`).join('')}</div></div>
           <button class="factory-generate" data-factory-action="generate">GENERATE 12</button>
         </div>
-        <div class="factory-status"><span>POOL 160×2 → SAFE TOP 12</span><span>QUALITY FLOOR 72</span><span>DISPLAY SAFETY GATE ON</span><span>DIVERSITY RANKING ON</span><span>★ ${favoriteCount} KEPT</span>${this.variationAnchor?'<strong>VARIATION MODE</strong>':''}${message?`<strong>${message}</strong>`:''}</div>
+        <div class="factory-status"><span>POOL 160×2 → SAFE TOP 12</span><span>QUALITY FLOOR 72</span><span>DISPLAY SAFETY GATE ON</span><span>DIVERSITY RANKING ON</span><span>MOTION PROFILE ON</span><span>★ ${favoriteCount} KEPT</span>${this.variationAnchor?'<strong>VARIATION MODE</strong>':''}${message?`<strong>${message}</strong>`:''}</div>
         <div class="factory-grid">${this.candidates.map((candidate,index)=>`<button class="factory-card ${index===this.selected?'selected':''}" data-factory-index="${index}" aria-label="Candidate ${index+1}"><canvas class="factory-thumb" data-factory-thumb="${index}"></canvas><div class="factory-card-meta"><strong>#${String(index+1).padStart(2,'0')}</strong><span>Q ${Math.round(candidate.scores.quality)}</span><span>H ${Math.round(candidate.scores.harmony)}</span><span>U ${Math.round(candidate.scores.diversity)}</span></div></button>`).join('')}</div>
         <footer class="factory-footer">
-          <div class="factory-selected">${selected?`<strong>SELECTED #${String(this.selected+1).padStart(2,'0')}</strong><span>${selected.style.toUpperCase()} · seed ${this.escape(selected.seed.slice(-24))}</span><span>Quality ${selected.scores.quality.toFixed(1)} · Harmony ${selected.scores.harmony.toFixed(1)} · Diversity ${selected.scores.diversity.toFixed(1)}</span>`:'<strong>NO SAFE CANDIDATES — loosen locks or use a new seed</strong>'}</div>
+          <div class="factory-selected">${selected&&motion?`<strong>SELECTED #${String(this.selected+1).padStart(2,'0')}</strong><span>${selected.style.toUpperCase()} · seed ${this.escape(selected.seed.slice(-24))}</span><span>Quality ${selected.scores.quality.toFixed(1)} · Harmony ${selected.scores.harmony.toFixed(1)} · Diversity ${selected.scores.diversity.toFixed(1)}</span><span>CHARACTERITY · ${motion.expression.toUpperCase()} · ${motion.pose.toUpperCase()} · ${motion.action.toUpperCase()}</span>`:'<strong>NO SAFE CANDIDATES — loosen locks or use a new seed</strong>'}</div>
           <div class="factory-footer-actions"><button data-factory-action="keep" ${selected?'':'disabled'}>★ KEEP</button><button data-factory-action="variations" ${selected?'':'disabled'}>VARIATIONS</button><button class="factory-use" data-factory-action="use" ${selected?'':'disabled'}>USE THIS CHARACTER</button></div>
         </footer>
       </div>`;
     requestAnimationFrame(()=>this.renderThumbnails());
   }
   private renderThumbnails(){this.panel.querySelectorAll<HTMLCanvasElement>('[data-factory-thumb]').forEach(canvas=>{const candidate=this.candidates[Number(canvas.dataset.factoryThumb)];if(candidate)renderFactoryThumbnail(canvas,candidate.definition);});}
-  private escape(value:string){return value.replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]??char));}
+  private escape(value:string){return value.replace(/[&<>'\"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[char]??char));}
   dispose(){this.root.removeEventListener('click',this.onClick);this.panel.removeEventListener('change',this.onChange);this.panel.remove();this.launchButton.remove();}
 }
