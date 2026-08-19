@@ -5,6 +5,7 @@ import { SOURCE_SHEET_GZIP_2A } from './generated/sourceSheetGzip2a';
 import { SOURCE_SHEET_GZIP_2B } from './generated/sourceSheetGzip2b';
 import { SOURCE_SHEET_GZIP_3A } from './generated/sourceSheetGzip3a';
 import { SOURCE_SHEET_GZIP_3B } from './generated/sourceSheetGzip3b';
+import { autoRepairGeometry } from './generated/autoRepairGeometry';
 
 export type GeneratedSourceRole = 'hair' | 'accent' | 'outline' | 'white' | 'eyes' | 'pupil' | 'highlight' | 'skin' | 'brows' | 'mouth' | 'tongue' | 'jacket' | 'shirt' | 'hood';
 export type GeneratedSourceKind = 'hair' | 'eye' | 'face' | 'brow' | 'nose' | 'mouth' | 'outfit';
@@ -39,6 +40,9 @@ const view=new DataView(raw.buffer,raw.byteOffset,raw.byteLength);
 function decodeTriangle(recordIndex:number):GeneratedSourceTriangle{const off=recordIndex*RECORD_BYTES,point=(index:number):Vec2=>[view.getInt16(off+index*4,true)/COORD_SCALE,view.getInt16(off+index*4+2,true)/COORD_SCALE],roleIndex=view.getUint8(off+13),role=ROLES[roleIndex];if(!role)throw new Error(`Unknown generated source role ${roleIndex} at triangle ${recordIndex}`);return{points:[point(0),point(1),point(2)],shade:view.getInt8(off+12),role};}
 const PARTS={} as Record<GeneratedSourceKey,readonly GeneratedSourceTriangle[]>;
 for(const [key,[start,count]] of Object.entries(INDEX) as [GeneratedSourceKey,readonly [number,number]][])PARTS[key]=Array.from({length:count},(_,i)=>decodeTriangle(start+i));
-export function generatedSourceTriangles(kind:GeneratedSourceKind,id:string):readonly GeneratedSourceTriangle[]{const key=`${kind}:${id}` as GeneratedSourceKey,triangles=PARTS[key];if(!triangles)throw new Error(`No generated source-sheet geometry for ${key}`);return triangles;}
+export function generatedSourceTriangles(kind:GeneratedSourceKind,id:string):readonly GeneratedSourceTriangle[]{
+  const override=autoRepairGeometry(kind,id);if(override){return override.triangles.map(triangle=>{const role=triangle.role as GeneratedSourceRole;if(!(ROLES as readonly string[]).includes(role))throw new Error(`Unknown auto-repair role ${triangle.role} for ${kind}:${id}`);return{role,shade:triangle.shade,points:triangle.points};});}
+  const key=`${kind}:${id}` as GeneratedSourceKey,triangles=PARTS[key];if(!triangles)throw new Error(`No generated source-sheet geometry for ${key}`);return triangles;
+}
 export function generatedSourceTriangleCount(kind:GeneratedSourceKind,id:string):number{return generatedSourceTriangles(kind,id).length;}
 export const GENERATED_SOURCE_KEYS=Object.freeze(Object.keys(INDEX) as GeneratedSourceKey[]);
