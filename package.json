@@ -9,7 +9,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run tests",
     "vectorizer:setup": "npm --prefix tools/part-vectorizer-v2 install",
-    "vectorize:parts": "npm --prefix tools/part-vectorizer-v2 run vectorize --"
+    "vectorize:parts": "npm --prefix tools/part-vectorizer-v2 run vectorize --",
+    "repair:parts": "npm --prefix tools/part-vectorizer-v2 run repair --"
   },
   "dependencies": {
     "three": "^0.185.1"
