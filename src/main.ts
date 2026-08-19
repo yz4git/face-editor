@@ -31,8 +31,9 @@ editor.setMotionRestoreHandler(state=>motionPanel.applyMotionState(state));
 new FactoryPanel(root,{
   getCharacter:()=>editor.getCharacterDefinition(),
   applyCharacter:(definition,motion)=>{
+    const activeExpression=expressionPanel.getActiveExpression();
     editor.applyCharacterDefinition(definition);
-    expressionPanel.applyExpressionState(motion.expression,expressionPanel.getExpressionSet());
+    if(activeExpression==='neutral')expressionPanel.applyExpressionState(motion.expression,expressionPanel.getExpressionSet());
     motionPanel.applyFactoryProfile(motion);
   },
 });
