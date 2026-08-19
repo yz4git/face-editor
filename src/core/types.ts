@@ -16,6 +16,7 @@ export type AccentStyleId = 'diamond' | 'long-strip' | 'point-strip' | 'corner' 
 export type ExpressionId = 'neutral' | 'smile' | 'happy' | 'angry' | 'sad' | 'surprised' | 'serious' | 'blink';
 export type PoseId = 'idle' | 'relax' | 'confident' | 'cute' | 'cool' | 'fight' | 'run' | 'jump';
 export type MotionActionId = 'none' | 'breathe' | 'blink' | 'talk' | 'wave' | 'walk' | 'run';
+export type CutsceneTemplateId = 'intro' | 'reaction' | 'battle';
 export type PartCategory = 'body' | 'outfit' | 'hair' | 'face' | 'eye' | 'brow' | 'nose' | 'mouth';
 export type ColorRole = 'skin' | 'hair' | 'eyes' | 'brows' | 'jacket' | 'accent' | 'shirt' | 'hood' | 'strap' | 'metal' | 'white' | 'mouth' | 'tongue' | 'pupil';
 
@@ -40,6 +41,30 @@ export interface CharacterMotionState {
   action: MotionActionId;
   playing: boolean;
   autoBlink: boolean;
+}
+
+export interface CutsceneCameraState {
+  zoom: number;
+  panX: number;
+  panY: number;
+}
+
+export interface CutsceneCue {
+  id: string;
+  timeMs: number;
+  label: string;
+  expression?: ExpressionId;
+  pose?: PoseId;
+  action?: MotionActionId;
+  camera?: CutsceneCameraState;
+  dialogue?: string;
+}
+
+export interface CutsceneProject {
+  version: 1;
+  title: string;
+  durationMs: number;
+  cues: CutsceneCue[];
 }
 
 export interface ExpressionTransformDelta {
@@ -147,6 +172,7 @@ export interface CharacterBundle {
     set: CharacterExpressionSet;
   };
   motion?: CharacterMotionState;
+  cutscene?: CutsceneProject;
   mesh: {
     version: 1;
     layers: SerializablePolygonLayer[];

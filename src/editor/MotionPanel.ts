@@ -21,6 +21,10 @@ export class MotionPanel{
   private open=false;
   private raf=0;
   private lastFrame=-Infinity;
+  private cutsceneRestore:CharacterMotionState|null=null;
+  private cutsceneDriving=false;
+  private cutsceneTransportPlaying=false;
+  private cutsceneSignature='';
   private readonly frameInterval=1000/30;
 
   constructor(private root:HTMLElement,private bridge:MotionEditorBridge){
@@ -39,35 +43,36 @@ export class MotionPanel{
     if(!this.panel.contains(button))return;
     if(button.dataset.motionClose){this.open=false;this.render();return;}
     const pose=button.dataset.motionPose as PoseId|undefined;
-    if(pose&&POSE_ORDER.includes(pose)){this.state.pose=pose;this.apply();this.render();return;}
+    if(pose&&POSE_ORDER.includes(pose)){this.releaseCutsceneDrive();this.state.pose=pose;this.apply();this.render();return;}
     const action=button.dataset.motionAction as MotionActionId|undefined;
-    if(action&&ACTION_ORDER.includes(action as Exclude<MotionActionId,'none'>)){this.state.action=this.state.action===action?'none':action;this.state.playing=true;this.apply();this.render();return;}
-    if(button.dataset.motionPlay){this.state.playing=!this.state.playing;this.apply();this.render();return;}
-    if(button.dataset.motionBlink){this.state.autoBlink=!this.state.autoBlink;this.apply();this.render();return;}
-    if(button.dataset.motionReset){this.state=cloneMotionState(DEFAULT_MOTION_STATE);this.apply();this.render();return;}
+    if(action&&ACTION_ORDER.includes(action as Exclude<MotionActionId,'none'>)){this.releaseCutsceneDrive();this.state.action=this.state.action===action?'none':action;this.state.playing=true;this.apply();this.render();return;}
+    if(button.dataset.motionPlay){this.releaseCutsceneDrive();this.state.playing=!this.state.playing;this.apply();this.render();return;}
+    if(button.dataset.motionBlink){this.releaseCutsceneDrive();this.state.autoBlink=!this.state.autoBlink;this.apply();this.render();return;}
+    if(button.dataset.motionReset){this.releaseCutsceneDrive();this.state=cloneMotionState(DEFAULT_MOTION_STATE);this.apply();this.render();return;}
     if(button.dataset.motionSheet){downloadMotionSheet(this.bridge.getCharacter(),this.bridge.getExpressionSet());this.flash('SHEET EXPORTED');}
   };
 
-  private onVisibilityChange=()=>{if(!document.hidden&&this.state.playing)this.bridge.setAnimationTime(performance.now());};
+  private onVisibilityChange=()=>{if(!document.hidden&&!this.cutsceneDriving&&this.state.playing)this.bridge.setAnimationTime(performance.now());};
 
   private frame=(time:number)=>{
-    if(!document.hidden&&this.state.playing&&time-this.lastFrame>=this.frameInterval){this.lastFrame=time;this.bridge.setAnimationTime(time);}
+    if(!document.hidden&&!this.cutsceneDriving&&this.state.playing&&time-this.lastFrame>=this.frameInterval){this.lastFrame=time;this.bridge.setAnimationTime(time);}
     this.raf=requestAnimationFrame(this.frame);
   };
 
+  private installMutator(snapshot:CharacterMotionState){this.bridge.setCompiledPreviewMutator((character,timeMs)=>{applyMotionInPlace(character,snapshot,timeMs);});}
   private apply(){
     const snapshot=cloneMotionState(this.state);
-    this.bridge.setCompiledPreviewMutator((character,timeMs)=>{applyMotionInPlace(character,snapshot,timeMs);});
+    this.installMutator(snapshot);
     this.bridge.setMotionExportState(snapshot);
     this.bridge.setAnimationTime(this.state.playing?performance.now():0);
   }
 
   private render(){
     this.launchButton.classList.toggle('selected',this.open);this.launchButton.setAttribute('aria-pressed',String(this.open));this.panel.hidden=!this.open;
-    this.statusPill.textContent=`${motionPoseLabel(this.state.pose)} · ${motionActionLabel(this.state.action)}`;this.statusPill.classList.toggle('playing',this.state.playing);
+    this.statusPill.textContent=`${motionPoseLabel(this.state.pose)} · ${motionActionLabel(this.state.action)}`;this.statusPill.classList.toggle('playing',this.cutsceneDriving?this.cutsceneTransportPlaying:this.state.playing);
     if(!this.open)return;
     this.panel.innerHTML=`
-      <header class="motion-header"><div><span>CHARACTER MOTION STUDIO v1</span><strong>${motionPoseLabel(this.state.pose)} · ${motionActionLabel(this.state.action)}</strong></div><button type="button" data-motion-close="1" aria-label="Close Motion Studio">×</button></header>
+      <header class="motion-header"><div><span>CHARACTER MOTION STUDIO v1${this.cutsceneDriving?' · CUTSCENE DRIVE':''}</span><strong>${motionPoseLabel(this.state.pose)} · ${motionActionLabel(this.state.action)}</strong></div><button type="button" data-motion-close="1" aria-label="Close Motion Studio">×</button></header>
       <div class="motion-row"><label>POSE</label><div class="motion-button-strip pose-strip" role="group" aria-label="Pose presets">${POSE_ORDER.map(id=>`<button type="button" data-motion-pose="${id}" class="${id===this.state.pose?'selected':''}" aria-pressed="${id===this.state.pose}" title="${POSE_PRESETS[id].description}"><span>${POSE_ICONS[id]}</span><small>${motionPoseLabel(id)}</small></button>`).join('')}</div></div>
       <div class="motion-row"><label>ACTION</label><div class="motion-button-strip action-strip" role="group" aria-label="Motion actions">${ACTION_ORDER.map(id=>`<button type="button" data-motion-action="${id}" class="${id===this.state.action?'selected':''}" aria-pressed="${id===this.state.action}"><span>${ACTION_ICONS[id]}</span><small>${motionActionLabel(id)}</small></button>`).join('')}</div></div>
       <footer class="motion-footer"><button type="button" data-motion-play="1" class="${this.state.playing?'selected':''}">${this.state.playing?'❚❚ PAUSE':'▶ PLAY'}</button><button type="button" data-motion-blink="1" class="${this.state.autoBlink?'selected':''}">⌒ AUTO BLINK</button><button type="button" data-motion-sheet="1">▦ SHEET</button><button type="button" data-motion-reset="1">↺ RESET</button><output role="status"></output></footer>`;
@@ -76,8 +81,21 @@ export class MotionPanel{
   private flash(message:string){const output=this.panel.querySelector<HTMLOutputElement>('output');if(output){output.value=message;setTimeout(()=>{if(output.isConnected)output.value='';},1400);}}
 
   getMotionState(){return cloneMotionState(this.state);}
-  applyMotionState(input:CharacterMotionState){this.state=normalizeMotionState(input);this.apply();this.render();}
-  applyFactoryProfile(profile:{pose:PoseId;action:MotionActionId}){this.state={...this.state,pose:profile.pose,action:profile.action,playing:true,autoBlink:true};this.apply();this.render();}
+  applyMotionState(input:CharacterMotionState){this.releaseCutsceneDrive();this.state=normalizeMotionState(input);this.apply();this.render();}
+  applyFactoryProfile(profile:{pose:PoseId;action:MotionActionId}){this.releaseCutsceneDrive();this.state={...this.state,pose:profile.pose,action:profile.action,playing:true,autoBlink:true};this.apply();this.render();}
+  driveCutscene(pose:PoseId,action:MotionActionId,timeMs:number,transportPlaying:boolean){
+    if(!this.cutsceneDriving){this.cutsceneRestore=cloneMotionState(this.state);this.cutsceneDriving=true;this.cutsceneSignature='';}
+    this.cutsceneTransportPlaying=transportPlaying;
+    const next:CharacterMotionState={version:1,pose,action,playing:true,autoBlink:true},signature=`${pose}:${action}`;
+    this.state=next;
+    if(signature!==this.cutsceneSignature){this.cutsceneSignature=signature;this.installMutator(cloneMotionState(next));this.render();}
+    else this.statusPill.classList.toggle('playing',transportPlaying);
+    this.bridge.setAnimationTime(Math.max(0,timeMs));
+  }
+  releaseCutsceneDrive(){
+    if(!this.cutsceneDriving)return;
+    const restore=this.cutsceneRestore??cloneMotionState(DEFAULT_MOTION_STATE);this.cutsceneRestore=null;this.cutsceneDriving=false;this.cutsceneTransportPlaying=false;this.cutsceneSignature='';this.state=restore;this.apply();this.render();
+  }
 
-  dispose(){cancelAnimationFrame(this.raf);this.root.removeEventListener('click',this.onClick);document.removeEventListener('visibilitychange',this.onVisibilityChange);this.bridge.setCompiledPreviewMutator(null);this.panel.remove();this.statusPill.remove();this.launchButton.remove();}
+  dispose(){cancelAnimationFrame(this.raf);this.releaseCutsceneDrive();this.root.removeEventListener('click',this.onClick);document.removeEventListener('visibilitychange',this.onVisibilityChange);this.bridge.setCompiledPreviewMutator(null);this.panel.remove();this.statusPill.remove();this.launchButton.remove();}
 }
