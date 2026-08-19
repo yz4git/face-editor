@@ -9,12 +9,20 @@ import { DEFAULT_CHARACTER } from '../src/data/parts';
 
 const positions=(character:ReturnType<typeof compileCharacter>,id:string)=>Array.from(character.layers.find(layer=>layer.id===id)?.positions??[]);
 const distance=(values:number[],a:number,b:number)=>Math.hypot(values[a]-values[b],values[a+1]-values[b+1]);
+const positionSnapshot=(character:ReturnType<typeof compileCharacter>)=>character.layers.map(layer=>({id:layer.id,positions:Array.from(layer.positions)}));
 
 describe('Character Motion Studio v1',()=>{
   it('exposes eight simple poses and six visible actions',()=>{
     expect(POSE_ORDER).toEqual(['idle','relax','confident','cute','cool','fight','run','jump']);
     expect(ACTION_ORDER).toEqual(['breathe','blink','talk','wave','walk','run']);
-    expect(DEFAULT_MOTION_STATE).toEqual({version:1,pose:'idle',action:'breathe',playing:true,autoBlink:true});
+    expect(DEFAULT_MOTION_STATE).toEqual({version:1,pose:'idle',action:'breathe',playing:false,autoBlink:true});
+  });
+
+  it('keeps the default paused preview byte-for-byte static at arbitrary animation times',()=>{
+    const character=compileCharacter(structuredClone(DEFAULT_CHARACTER)),before=positionSnapshot(character),boundsBefore={...character.bounds};
+    applyMotionInPlace(character,DEFAULT_MOTION_STATE,3890);
+    expect(positionSnapshot(character)).toEqual(before);
+    expect(character.bounds).toEqual(boundsBefore);
   });
 
   it('poses the body while keeping face geometry rigid',()=>{
