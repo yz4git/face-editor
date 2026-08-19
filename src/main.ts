@@ -3,10 +3,12 @@ import './factory.css';
 import './expression.css';
 import './body-proportions.css';
 import './motion.css';
+import './cutscene.css';
 import { EditorApp } from './editor/EditorApp';
 import { FactoryPanel } from './editor/FactoryPanel';
 import { ExpressionPanel } from './editor/ExpressionPanel';
 import { MotionPanel } from './editor/MotionPanel';
+import { CutscenePanel } from './editor/CutscenePanel';
 
 const root=document.querySelector<HTMLElement>('#app');
 if(!root) throw new Error('App root not found');
@@ -27,6 +29,14 @@ const motionPanel=new MotionPanel(root,{
   setMotionExportState:(state)=>editor.setMotionExportState(state),
 });
 editor.setMotionRestoreHandler(state=>motionPanel.applyMotionState(state));
+
+new CutscenePanel(root,{
+  getExpression:()=>expressionPanel.getActiveExpression(),
+  applyExpression:(expression)=>expressionPanel.applyExpressionState(expression,expressionPanel.getExpressionSet()),
+  getMotion:()=>motionPanel.getMotionState(),
+  driveMotion:(pose,action,timeMs,playing)=>motionPanel.driveCutscene(pose,action,timeMs,playing),
+  releaseMotion:()=>motionPanel.releaseCutsceneDrive(),
+});
 
 new FactoryPanel(root,{
   getCharacter:()=>editor.getCharacterDefinition(),
