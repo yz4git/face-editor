@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { compileCharacter } from '../core/compileCharacter';
-import type { CharacterDefinition, CompiledPolygonCharacter } from '../core/types';
+import { compileCharacter, type CompileCharacterOptions } from '../core/compileCharacter';
+import type { CharacterDefinition, CompiledPolygonCharacter, PartTransform } from '../core/types';
 
 export type RendererMode='webgl'|'canvas2d';
+type AuditWindow=Window&{__FACE_EDITOR_RENDERER_MODE__?:RendererMode;__FACE_EDITOR_REPAIR_TRANSFORMS__?:Record<string,PartTransform>};
 
 export class CharacterRenderer{
   private scene=new THREE.Scene();
@@ -14,9 +15,10 @@ export class CharacterRenderer{
   private root=new THREE.Group();
   private observer:ResizeObserver;
   private mode:RendererMode='canvas2d';
+  private auditMode=false;
 
   constructor(private host:HTMLElement){
-    const params=new URLSearchParams(location.search),forceCanvas=params.get('renderer')==='canvas2d'||params.get('visualAudit')==='1';
+    const params=new URLSearchParams(location.search),forceCanvas=params.get('renderer')==='canvas2d'||params.get('visualAudit')==='1';this.auditMode=params.get('visualAudit')==='1';
     if(!forceCanvas)this.tryWebGL();if(!this.renderer)this.enableCanvasFallback();
     this.camera.position.set(0,0,10);this.camera.lookAt(0,0,0);this.scene.add(this.root);
     this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(this.host);this.resize();this.publishMode();
@@ -30,9 +32,10 @@ export class CharacterRenderer{
     }catch{this.renderer=null;}
   }
   private enableCanvasFallback(){if(this.fallbackCanvas)return;const canvas=document.createElement('canvas');canvas.className='character-canvas canvas2d-fallback';canvas.dataset.renderer='canvas2d';this.fallbackCanvas=canvas;this.fallbackContext=canvas.getContext('2d');this.host.append(canvas);this.mode='canvas2d';this.publishMode();}
-  private publishMode(){this.host.dataset.rendererMode=this.mode;(window as Window&{__FACE_EDITOR_RENDERER_MODE__?:RendererMode}).__FACE_EDITOR_RENDERER_MODE__=this.mode;this.host.dispatchEvent(new CustomEvent('renderer-mode',{detail:{mode:this.mode}}));}
+  private publishMode(){this.host.dataset.rendererMode=this.mode;(window as AuditWindow).__FACE_EDITOR_RENDERER_MODE__=this.mode;this.host.dispatchEvent(new CustomEvent('renderer-mode',{detail:{mode:this.mode}}));}
   setCharacter(definition:CharacterDefinition):CompiledPolygonCharacter{
-    const compiled=compileCharacter(definition);this.current=compiled;this.disposeMeshes();
+    const auditRepairs=this.auditMode?(window as AuditWindow).__FACE_EDITOR_REPAIR_TRANSFORMS__:undefined,options:CompileCharacterOptions|undefined=auditRepairs?{repairTransforms:auditRepairs}:undefined;
+    const compiled=compileCharacter(definition,options);this.current=compiled;this.disposeMeshes();
     if(this.renderer)for(const layer of compiled.layers){const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(layer.positions,3));geometry.setAttribute('color',new THREE.BufferAttribute(layer.colors,3));geometry.setIndex(new THREE.BufferAttribute(layer.indices,1));const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false});const mesh=new THREE.Mesh(geometry,material);mesh.renderOrder=layer.zIndex;mesh.position.z=layer.zIndex*.002;mesh.name=layer.id;this.root.add(mesh);}
     this.frame(compiled);this.render();return compiled;
   }
