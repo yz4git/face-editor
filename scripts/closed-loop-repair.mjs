@@ -17,12 +17,13 @@ const hash=async()=>{const parts=await Promise.all([transformFile,geometryFile].
 
 async function run(command,args,{env={},allowFailure=false}={}){return new Promise((resolve,reject)=>{const child=spawn(command,args,{cwd:root,env:{...process.env,...env},stdio:'inherit',shell:false});child.on('error',reject);child.on('exit',code=>{if(code===0||allowFailure)resolve(code??1);else reject(new Error(`${command} ${args.join(' ')} exited with ${code}`));});});}
 async function waitForPreview(url){for(let attempt=0;attempt<60;attempt++){try{const response=await fetch(url);if(response.ok)return;}catch{}await delay(250);}throw new Error(`Preview did not become ready at ${url}`);}
-async function stopPreview(child){if(child.exitCode!==null)return;child.kill('SIGTERM');await Promise.race([new Promise(resolve=>child.once('exit',resolve)),delay(1500)]);if(child.exitCode===null)child.kill('SIGKILL');}
+function signalPreview(child,signal){try{if(process.platform!=='win32'&&child.pid)process.kill(-child.pid,signal);else child.kill(signal);}catch(error){if(error?.code!=='ESRCH')throw error;}}
+async function stopPreview(child){if(child.exitCode!==null)return;signalPreview(child,'SIGTERM');await Promise.race([new Promise(resolve=>child.once('exit',resolve)),delay(1500)]);if(child.exitCode===null)signalPreview(child,'SIGKILL');}
 
 async function runAudit(pass){
   await fs.rm(auditOutput,{recursive:true,force:true});await fs.mkdir(auditOutput,{recursive:true});
   await run('npm',['run','build']);
-  const preview=spawn('npm',['run','preview','--','--host','127.0.0.1','--port',String(options.port)],{cwd:root,env:process.env,stdio:'inherit',shell:false}),url=`http://127.0.0.1:${options.port}/`;let auditExit=0;
+  const preview=spawn('npm',['run','preview','--','--host','127.0.0.1','--port',String(options.port)],{cwd:root,env:process.env,stdio:'inherit',shell:false,detached:process.platform!=='win32'}),url=`http://127.0.0.1:${options.port}/`;let auditExit=0;
   try{await waitForPreview(url);auditExit=await run('npx',['playwright','test','visual-audit/visual-audit.spec.ts','--reporter=line'],{allowFailure:true});}finally{await stopPreview(preview);}
   const anomalyPath=path.join(auditOutput,'anomaly-report.json'),repairPath=path.join(auditOutput,'repair-report.json');
   let anomaly,repair;try{anomaly=JSON.parse(await fs.readFile(anomalyPath,'utf8'));repair=JSON.parse(await fs.readFile(repairPath,'utf8'));}catch(error){if(auditExit!==0)throw new Error(`Visual audit failed before repair reports were produced: ${error?.message??error}`);throw error;}
