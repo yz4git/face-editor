@@ -1,4 +1,5 @@
 import './styles.css';
+import './factory.css';
 import { EditorApp } from './editor/EditorApp';
 import { FactoryPanel } from './editor/FactoryPanel';
 import type { CharacterDefinition } from './core/types';
