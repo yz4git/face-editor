@@ -1,8 +1,10 @@
 import { CharacterRenderer } from '../render/CharacterRenderer';
 import { renderPartThumbnail } from '../render/PartThumbnailRenderer';
 import { exportCharacterBundle } from '../core/compileCharacter';
+import { expressionStateForBundle, parseCharacterBundle, serializeCharacterBundle } from '../core/characterBundle';
 import { BODY_PROPORTION_LIMITS, DEFAULT_BODY_PROPORTIONS, normalizeBodyProportions } from '../core/bodyProportions';
-import type { BodyProportions, CharacterDefinition, CharacterExpressionSet, ExpressionId, PartDefinition, PartTransform } from '../core/types';
+import { DEFAULT_EXPRESSION_SET } from '../core/expressionSystem';
+import type { BodyProportions, CharacterBundle, CharacterDefinition, CharacterExpressionSet, ExpressionId, PartDefinition, PartTransform } from '../core/types';
 import {
   ACCENT_OPTIONS,BASE_OPTIONS,BROW_OPTIONS,DEFAULT_CHARACTER,EYE_COLORS,EYE_OPTIONS,FACE_OPTIONS,HAIR_COLORS,HAIR_OPTIONS,HOOD_OPTIONS,JACKET_COLORS,MOUTH_OPTIONS,NOSE_OPTIONS,OUTFIT_OPTIONS,SHIRT_OPTIONS,SKIN_COLORS,STRAP_OPTIONS,
 } from '../data/parts';
@@ -38,7 +40,9 @@ export class EditorApp{
   private activeAdjust:TransformKey='eyes';
   private sliderEditing=false;
   private previewTransformer:((definition:CharacterDefinition)=>CharacterDefinition)|null=null;
-  private expressionExportState:{active:ExpressionId;set:CharacterExpressionSet}|null=null;
+  private expressionExportState:{active:ExpressionId;set:CharacterExpressionSet}={active:'neutral',set:clone(DEFAULT_EXPRESSION_SET)};
+  private expressionRestoreHandler:((active:ExpressionId,set:CharacterExpressionSet)=>void)|null=null;
+  private statusMessage='READY';
 
   constructor(private root:HTMLElement){this.mount();}
 
@@ -51,8 +55,10 @@ export class EditorApp{
             <button data-action="randomize">⤨<small>RANDOMIZE</small></button>
             <button data-action="undo">↶<small>UNDO</small></button>
             <button data-action="redo">↷<small>REDO</small></button>
+            <button data-action="import">↥<small>IMPORT</small></button>
             <button data-action="export">✓<small>EXPORT</small></button>
           </div>
+          <input id="bundle-import-input" type="file" accept=".json,application/json" data-action="import-file" hidden>
         </header>
         <main class="editor-grid">
           <nav class="category-rail" aria-label="Character part categories">
@@ -92,7 +98,7 @@ export class EditorApp{
         </main>
         <footer class="bottombar">
           <div><strong>Generated-source triangle character data</strong><small>Face stays fixed while body height, build and shoulder width can change independently.</small></div>
-          <div class="save-slots"><span>SAVE SLOT</span>${[1,2,3,4].map(n=>`<button data-slot="${n}" class="${n===1?'selected':''}">${n}</button>`).join('')}</div>
+          <div class="save-slots"><span>SLOT</span>${[1,2,3,4].map(n=>`<button data-slot="${n}" class="${n===1?'selected':''}" aria-label="Select save slot ${n}">${n}</button>`).join('')}<button data-action="save-slot">SAVE</button><button data-action="load-slot">LOAD</button><output id="save-status" role="status" aria-live="polite">${this.statusMessage}</output></div>
         </footer>
       </div>`;
     const preview=this.root.querySelector<HTMLElement>('#preview');if(!preview)throw new Error('Preview host missing');
@@ -104,8 +110,8 @@ export class EditorApp{
   private onClick=(ev:Event)=>{
     const target=(ev.target as HTMLElement).closest<HTMLElement>('button');if(!target)return;
     const action=target.dataset.action;
-    if(action==='randomize'){this.randomize();return;}if(action==='undo'){this.undo();return;}if(action==='redo'){this.redo();return;}if(action==='export'){this.export();return;}if(action==='reset-transform'){this.resetTransform();return;}if(action==='reset-body'){this.resetBody();return;}
-    const slot=target.dataset.slot;if(slot){this.saveToSlot(Number(slot));return;}
+    if(action==='randomize'){this.randomize();return;}if(action==='undo'){this.undo();return;}if(action==='redo'){this.redo();return;}if(action==='import'){this.root.querySelector<HTMLInputElement>('#bundle-import-input')?.click();return;}if(action==='export'){this.export();return;}if(action==='save-slot'){this.saveToSlot(this.activeSlot);return;}if(action==='load-slot'){this.loadFromSlot(this.activeSlot);return;}if(action==='reset-transform'){this.resetTransform();return;}if(action==='reset-body'){this.resetBody();return;}
+    const slot=target.dataset.slot;if(slot){this.activeSlot=Number(slot);this.renderUI();this.setStatus('SLOT '+slot+' SELECTED');return;}
     const base=target.dataset.base;if(base){this.pushHistory();this.state.baseStyle=base as CharacterDefinition['baseStyle'];this.commit();return;}
     const adjust=target.dataset.adjust as TransformKey|undefined;if(adjust){this.activeAdjust=adjust;this.renderAdjustControls();return;}
     const focus=target.dataset.focus;if(focus){this.focusSection(focus,target);return;}
@@ -119,12 +125,20 @@ export class EditorApp{
     if(bodyProp){if(!this.sliderEditing){this.pushHistory();this.sliderEditing=true;}const body=normalizeBodyProportions(this.state.bodyProportions);body[bodyProp]=Number(input.value);this.state.bodyProportions=body;const output=input.parentElement?.querySelector<HTMLOutputElement>('output');if(output)output.value=this.formatBodyValue(body[bodyProp]);this.renderPreview();return;}
     const prop=input.dataset.transformProp as TransformProp|undefined;if(!prop)return;if(!this.sliderEditing){this.pushHistory();this.sliderEditing=true;}const key=input.dataset.transformKey as TransformKey,value=Number(input.value);(this.state.transforms[key] as PartTransform&Record<TransformProp,number>)[prop]=value;const output=input.parentElement?.querySelector<HTMLOutputElement>('output');if(output)output.value=this.formatControl(prop,value);this.renderPreview();
   };
-  private onChange=(ev:Event)=>{const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"][data-transform-prop],input[type="range"][data-body-prop]');if(input){this.sliderEditing=false;if(input.dataset.bodyProp)this.renderBodyControls();}};
+  private onChange=(ev:Event)=>{
+    const fileInput=(ev.target as HTMLElement).closest<HTMLInputElement>('#bundle-import-input');
+    if(fileInput){void this.importFile(fileInput.files?.[0]??null);return;}
+    const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"][data-transform-prop],input[type="range"][data-body-prop]');
+    if(input){this.sliderEditing=false;if(input.dataset.bodyProp)this.renderBodyControls();}
+  };
 
   public getCharacterDefinition(){return clone(this.state);}
   public applyCharacterDefinition(definition:CharacterDefinition){this.pushHistory();this.state=clone(definition);this.state.bodyProportions=normalizeBodyProportions(this.state.bodyProportions);this.commit();}
+  public getCharacterBundle(){return this.buildBundle();}
+  public applyCharacterBundle(bundle:CharacterBundle){this.pushHistory();this.restoreBundle(bundle);this.commit();this.setStatus('BUNDLE RESTORED · '+this.expressionExportState.set.defaultExpression.toUpperCase()+' SET');}
   public setPreviewTransformer(transformer:((definition:CharacterDefinition)=>CharacterDefinition)|null){this.previewTransformer=transformer;this.renderPreview();}
   public setExpressionExportState(active:ExpressionId,set:CharacterExpressionSet){this.expressionExportState={active,set:clone(set)};}
+  public setExpressionRestoreHandler(handler:((active:ExpressionId,set:CharacterExpressionSet)=>void)|null){this.expressionRestoreHandler=handler;}
 
   private pushHistory(){this.history.push(clone(this.state));if(this.history.length>80)this.history.shift();this.redoHistory=[];}
   private commit(){this.renderUI();this.renderPreview();}
@@ -136,8 +150,39 @@ export class EditorApp{
   private redo(){const next=this.redoHistory.pop();if(next){this.history.push(clone(this.state));this.state=next;this.commit();}}
   private resetTransform(){this.pushHistory();this.state.transforms[this.activeAdjust]={x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0};this.commit();}
   private resetBody(){this.pushHistory();this.state.bodyProportions=clone(DEFAULT_BODY_PROPORTIONS);this.commit();}
-  private export(){this.state.bodyProportions=normalizeBodyProportions(this.state.bodyProportions);const options=this.expressionExportState?{activeExpression:this.expressionExportState.active,expressionSet:this.expressionExportState.set}:undefined,bundle=exportCharacterBundle(this.state,options),blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='polygon-character.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);}
-  private saveToSlot(slot:number){this.activeSlot=slot;this.state.bodyProportions=normalizeBodyProportions(this.state.bodyProportions);localStorage.setItem(`face-editor:slot:${slot}`,JSON.stringify(this.state));this.renderUI();}
+  private buildBundle():CharacterBundle{
+    this.state.bodyProportions=normalizeBodyProportions(this.state.bodyProportions);
+    return exportCharacterBundle(this.state,{activeExpression:this.expressionExportState.active,expressionSet:this.expressionExportState.set});
+  }
+  private restoreBundle(bundle:CharacterBundle){
+    this.state=clone(bundle.definition);
+    this.state.bodyProportions=normalizeBodyProportions(this.state.bodyProportions);
+    const expression=expressionStateForBundle(bundle);
+    this.expressionExportState={active:expression.active,set:clone(expression.set)};
+    this.expressionRestoreHandler?.(expression.active,expression.set);
+  }
+  private export(){
+    const bundle=this.buildBundle(),blob=new Blob([serializeCharacterBundle(bundle)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='polygon-character.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);this.setStatus('EXPORTED · 8 EXPRESSIONS INCLUDED');
+  }
+  private saveToSlot(slot:number){
+    try{localStorage.setItem(`face-editor:slot:${slot}`,serializeCharacterBundle(this.buildBundle()));this.activeSlot=slot;this.setStatus('SAVED SLOT '+slot+' · EXPRESSIONS INCLUDED');this.renderUI();}
+    catch{this.setStatus('SAVE FAILED · STORAGE UNAVAILABLE');}
+  }
+  private loadFromSlot(slot:number){
+    try{
+      const raw=localStorage.getItem(`face-editor:slot:${slot}`);
+      if(!raw){this.setStatus('SLOT '+slot+' IS EMPTY');return;}
+      this.applyCharacterBundle(parseCharacterBundle(JSON.parse(raw)));this.setStatus('LOADED SLOT '+slot+' · EXPRESSIONS RESTORED');
+    }
+    catch(error){this.setStatus('LOAD FAILED · '+(error instanceof Error?error.message:'INVALID JSON'));}
+  }
+  private async importFile(file:File|null){
+    if(!file)return;
+    try{const bundle=parseCharacterBundle(JSON.parse(await file.text()));this.applyCharacterBundle(bundle);this.setStatus('IMPORTED · '+file.name+' · EXPRESSIONS RESTORED');}
+    catch(error){this.setStatus('IMPORT FAILED · '+(error instanceof Error?error.message:'INVALID JSON'));}
+    finally{const input=this.root.querySelector<HTMLInputElement>('#bundle-import-input');if(input)input.value='';}
+  }
   private focusSection(name:string,button:HTMLElement){this.root.querySelectorAll('.category-rail button').forEach(x=>x.classList.remove('active'));button.classList.add('active');const adjustMap:Record<string,TransformKey|undefined>={eyes:'eyes',eyebrows:'brows',nose:'nose',mouth:'mouth'};if(adjustMap[name])this.activeAdjust=adjustMap[name]!;const id=name==='outline'?'outline-section':name==='color'?'left-section':`${name}-section`;this.root.querySelector(`#${id}`)?.scrollIntoView({behavior:'smooth',block:'nearest'});this.renderAdjustControls();}
 
   private renderUI(){
@@ -162,6 +207,7 @@ export class EditorApp{
   private formatBodyValue(value:number){return`${Math.round(value*100)}%`;}
   private formatControl(prop:TransformProp,value:number){return prop==='rotation'?`${Math.round(value*180/Math.PI)}°`:value.toFixed(2);}
   private updateRendererBadge(){const badge=this.root.querySelector('#renderer-mode');if(badge)badge.textContent=this.renderer?this.renderer.getMode().toUpperCase():'RENDERER';}
+  private setStatus(message:string){this.statusMessage=message;const output=this.root.querySelector<HTMLOutputElement>('#save-status');if(output)output.value=message;}
   private setHTML(selector:string,html:string){const el=this.root.querySelector(selector);if(el)el.innerHTML=html;}
   dispose(){this.root.removeEventListener('click',this.onClick);this.root.removeEventListener('input',this.onInput);this.root.removeEventListener('pointerdown',this.onPointerDown);this.root.removeEventListener('change',this.onChange);this.renderer.dispose();}
 }
