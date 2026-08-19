@@ -11,5 +11,6 @@ test('Character Factory generates, keeps, varies and applies a quality-gated bat
   await panel.locator('[data-factory-action="keep"]').click();await expect(panel.locator('.factory-status')).toContainText('1 KEPT');
   await cards.nth(1).click();await expect(cards.nth(1)).toHaveClass(/selected/);await panel.locator('[data-factory-action="variations"]').click();await expect(panel.locator('.factory-status')).toContainText('VARIATION MODE');await expect(panel.locator('.factory-card')).toHaveCount(12);
   await panel.locator('[data-factory-style="futuristic"]').click();await expect(panel.locator('[data-factory-style="futuristic"]')).toHaveClass(/selected/);await expect(panel.locator('.factory-card')).toHaveCount(12);
+  await page.screenshot({path:'test-results/factory-v1.png',fullPage:true});
   await panel.locator('[data-factory-action="use"]').click();await expect(panel).toBeHidden();await expect(page.locator('.part-card.selected')).toHaveCount(11);
 });
