@@ -3,5 +3,7 @@ node_modules/
 test/fixture/
 test/output/
 test/output-*/
+test/output-benchmark.json
 test/cache/
+test/cache-benchmark/
 *.log
