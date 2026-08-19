@@ -1,7 +1,7 @@
 import { CharacterRenderer } from '../render/CharacterRenderer';
 import { renderPartThumbnail } from '../render/PartThumbnailRenderer';
 import { exportCharacterBundle } from '../core/compileCharacter';
-import type { CharacterDefinition, PartDefinition, PartTransform } from '../core/types';
+import type { CharacterDefinition, CharacterExpressionSet, ExpressionId, PartDefinition, PartTransform } from '../core/types';
 import {
   ACCENT_OPTIONS,BASE_OPTIONS,BROW_OPTIONS,DEFAULT_CHARACTER,EYE_COLORS,EYE_OPTIONS,FACE_OPTIONS,HAIR_COLORS,HAIR_OPTIONS,HOOD_OPTIONS,JACKET_COLORS,MOUTH_OPTIONS,NOSE_OPTIONS,OUTFIT_OPTIONS,SHIRT_OPTIONS,SKIN_COLORS,STRAP_OPTIONS,
 } from '../data/parts';
@@ -30,6 +30,8 @@ export class EditorApp{
   private activeSlot=1;
   private activeAdjust:TransformKey='eyes';
   private sliderEditing=false;
+  private previewTransformer:((definition:CharacterDefinition)=>CharacterDefinition)|null=null;
+  private expressionExportState:{active:ExpressionId;set:CharacterExpressionSet}|null=null;
 
   constructor(private root:HTMLElement){this.mount();}
 
@@ -85,7 +87,7 @@ export class EditorApp{
     const preview=this.root.querySelector<HTMLElement>('#preview');if(!preview)throw new Error('Preview host missing');
     this.renderer=new CharacterRenderer(preview);this.updateRendererBadge();preview.addEventListener('renderer-mode',()=>this.updateRendererBadge());
     this.root.addEventListener('click',this.onClick);this.root.addEventListener('input',this.onInput);this.root.addEventListener('pointerdown',this.onPointerDown);this.root.addEventListener('change',this.onChange);
-    this.renderUI();this.renderer.setCharacter(this.state);
+    this.renderUI();this.renderPreview();
   }
 
   private onClick=(ev:Event)=>{
@@ -100,18 +102,24 @@ export class EditorApp{
     const colorKind=target.dataset.colorKind,color=target.dataset.color;if(colorKind&&color){this.pushHistory();this.applyColor(colorKind,color);this.commit();}
   };
   private onPointerDown=(ev:Event)=>{const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"][data-transform-prop]');if(input&&!this.sliderEditing){this.pushHistory();this.sliderEditing=true;}};
-  private onInput=(ev:Event)=>{const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"][data-transform-prop]');if(!input)return;if(!this.sliderEditing){this.pushHistory();this.sliderEditing=true;}const key=input.dataset.transformKey as TransformKey,prop=input.dataset.transformProp as TransformProp,value=Number(input.value);(this.state.transforms[key] as PartTransform&Record<TransformProp,number>)[prop]=value;const output=input.parentElement?.querySelector<HTMLOutputElement>('output');if(output)output.value=this.formatControl(prop,value);this.renderer.setCharacter(this.state);};
+  private onInput=(ev:Event)=>{const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"][data-transform-prop]');if(!input)return;if(!this.sliderEditing){this.pushHistory();this.sliderEditing=true;}const key=input.dataset.transformKey as TransformKey,prop=input.dataset.transformProp as TransformProp,value=Number(input.value);(this.state.transforms[key] as PartTransform&Record<TransformProp,number>)[prop]=value;const output=input.parentElement?.querySelector<HTMLOutputElement>('output');if(output)output.value=this.formatControl(prop,value);this.renderPreview();};
   private onChange=(ev:Event)=>{const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"][data-transform-prop]');if(input)this.sliderEditing=false;};
 
+  public getCharacterDefinition(){return clone(this.state);}
+  public applyCharacterDefinition(definition:CharacterDefinition){this.pushHistory();this.state=clone(definition);this.commit();}
+  public setPreviewTransformer(transformer:((definition:CharacterDefinition)=>CharacterDefinition)|null){this.previewTransformer=transformer;this.renderPreview();}
+  public setExpressionExportState(active:ExpressionId,set:CharacterExpressionSet){this.expressionExportState={active,set:clone(set)};}
+
   private pushHistory(){this.history.push(clone(this.state));if(this.history.length>80)this.history.shift();this.redoHistory=[];}
-  private commit(){this.renderUI();this.renderer.setCharacter(this.state);}
+  private commit(){this.renderUI();this.renderPreview();}
+  private renderPreview(){if(!this.renderer)return;const source=clone(this.state),preview=this.previewTransformer?this.previewTransformer(source):source;this.renderer.setCharacter(preview);}
   private applySelection(kind:string,id:string){if(kind==='outfit')this.state.outfitStyle=id as CharacterDefinition['outfitStyle'];else if(kind==='hood')this.state.hoodStyle=id as CharacterDefinition['hoodStyle'];else if(kind==='shirt')this.state.shirtStyle=id as CharacterDefinition['shirtStyle'];else if(kind==='strap')this.state.strapStyle=id as CharacterDefinition['strapStyle'];else if(kind==='accent')this.state.accentStyle=id as CharacterDefinition['accentStyle'];else if(kind==='hair')this.state.hairStyle=id as CharacterDefinition['hairStyle'];else if(kind==='face')this.state.faceShape=id as CharacterDefinition['faceShape'];else if(kind==='eye')this.state.eyeStyle=id as CharacterDefinition['eyeStyle'];else if(kind==='brow')this.state.browStyle=id as CharacterDefinition['browStyle'];else if(kind==='nose')this.state.noseStyle=id as CharacterDefinition['noseStyle'];else if(kind==='mouth')this.state.mouthStyle=id as CharacterDefinition['mouthStyle'];}
   private applyColor(kind:string,color:string){if(kind==='hair'){this.state.colors.hair=color;this.state.colors.brows=color;}else if(kind==='eyes')this.state.colors.eyes=color;else if(kind==='skin')this.state.colors.skin=color;else if(kind==='jacket')this.state.colors.jacket=color;}
   private randomize(){this.pushHistory();this.state.baseStyle=pick(BASE_OPTIONS).id;this.state.outfitStyle=pick(OUTFIT_OPTIONS).id;this.state.hoodStyle=pick(HOOD_OPTIONS).id;this.state.shirtStyle=pick(SHIRT_OPTIONS).id;this.state.strapStyle=pick(STRAP_OPTIONS).id;this.state.accentStyle=pick(ACCENT_OPTIONS).id;this.state.hairStyle=pick(HAIR_OPTIONS).id;this.state.faceShape=pick(FACE_OPTIONS).id;this.state.eyeStyle=pick(EYE_OPTIONS).id;this.state.browStyle=pick(BROW_OPTIONS).id;this.state.noseStyle=pick(NOSE_OPTIONS).id;this.state.mouthStyle=pick(MOUTH_OPTIONS).id;this.state.colors.hair=pick(HAIR_COLORS);this.state.colors.brows=this.state.colors.hair;this.state.colors.eyes=pick(EYE_COLORS);this.state.colors.skin=pick(SKIN_COLORS);this.state.colors.jacket=pick(JACKET_COLORS);this.commit();}
   private undo(){const prev=this.history.pop();if(prev){this.redoHistory.push(clone(this.state));this.state=prev;this.commit();}}
   private redo(){const next=this.redoHistory.pop();if(next){this.history.push(clone(this.state));this.state=next;this.commit();}}
   private resetTransform(){this.pushHistory();this.state.transforms[this.activeAdjust]={x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0};this.commit();}
-  private export(){const bundle=exportCharacterBundle(this.state),blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='polygon-character.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);}
+  private export(){const options=this.expressionExportState?{activeExpression:this.expressionExportState.active,expressionSet:this.expressionExportState.set}:undefined,bundle=exportCharacterBundle(this.state,options),blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='polygon-character.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);}
   private saveToSlot(slot:number){this.activeSlot=slot;localStorage.setItem(`face-editor:slot:${slot}`,JSON.stringify(this.state));this.renderUI();}
   private focusSection(name:string,button:HTMLElement){this.root.querySelectorAll('.category-rail button').forEach(x=>x.classList.remove('active'));button.classList.add('active');const adjustMap:Record<string,TransformKey|undefined>={eyes:'eyes',eyebrows:'brows',nose:'nose',mouth:'mouth'};if(adjustMap[name])this.activeAdjust=adjustMap[name]!;const id=name==='outline'?'outline-section':name==='color'?'left-section':`${name}-section`;this.root.querySelector(`#${id}`)?.scrollIntoView({behavior:'smooth',block:'nearest'});this.renderAdjustControls();}
 

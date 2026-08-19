@@ -13,6 +13,7 @@ export type HoodStyleId = 'folded' | 'drawstring' | 'sharp' | 'high' | 'wide' | 
 export type ShirtStyleId = 'tee' | 'long-sleeve' | 'tank' | 'three-quarter' | 'turtleneck' | 'sleeveless-high';
 export type StrapStyleId = 'simple' | 'padded' | 'single-pouch' | 'double-pouch' | 'cross' | 'y-harness';
 export type AccentStyleId = 'diamond' | 'long-strip' | 'point-strip' | 'corner' | 'chevron' | 'slash' | 'taper' | 'triangle';
+export type ExpressionId = 'neutral' | 'smile' | 'happy' | 'angry' | 'sad' | 'surprised' | 'serious' | 'blink';
 export type PartCategory = 'body' | 'outfit' | 'hair' | 'face' | 'eye' | 'brow' | 'nose' | 'mouth';
 export type ColorRole = 'skin' | 'hair' | 'eyes' | 'brows' | 'jacket' | 'accent' | 'shirt' | 'hood' | 'strap' | 'metal' | 'white' | 'mouth' | 'tongue' | 'pupil';
 
@@ -23,6 +24,31 @@ export interface PartTransform {
   scaleY: number;
   rotation: number;
   spacing?: number;
+}
+
+export interface ExpressionTransformDelta {
+  x?: number;
+  y?: number;
+  scaleX?: number;
+  scaleY?: number;
+  rotation?: number;
+  spacing?: number;
+}
+
+export interface ExpressionPresetDefinition {
+  id: ExpressionId;
+  label: string;
+  description: string;
+  eyeStyle?: EyeStyleId;
+  browStyle?: BrowStyleId;
+  mouthStyle?: MouthStyleId;
+  transforms?: Partial<Record<'eyes'|'brows'|'nose'|'mouth',ExpressionTransformDelta>>;
+}
+
+export interface CharacterExpressionSet {
+  version: 1;
+  defaultExpression: ExpressionId;
+  expressions: Record<ExpressionId,ExpressionPresetDefinition>;
 }
 
 export interface PartTriangleDefinition {
@@ -99,6 +125,10 @@ export interface CharacterBundle {
   format: 'face-editor-polygon-character';
   formatVersion: 1;
   definition: CharacterDefinition;
+  expressions?: {
+    active: ExpressionId;
+    set: CharacterExpressionSet;
+  };
   mesh: {
     version: 1;
     layers: SerializablePolygonLayer[];
