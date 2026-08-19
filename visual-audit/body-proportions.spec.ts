@@ -1,10 +1,6 @@
 import { test,expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
-const setRange=async(locator:ReturnType<Parameters<typeof test>[0]> extends never?never:any,value:string)=>{
-  await locator.evaluate((node:HTMLInputElement,next:string)=>{node.value=next;node.dispatchEvent(new Event('input',{bubbles:true}));node.dispatchEvent(new Event('change',{bubbles:true}));},value);
-};
-
 test('Body Size changes only the body with three simple controls and reset',async({page})=>{
   await page.setViewportSize({width:1280,height:720});
   await page.goto('http://127.0.0.1:4173/?renderer=canvas2d');
