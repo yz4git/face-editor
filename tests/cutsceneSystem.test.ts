@@ -42,7 +42,10 @@ describe('Cutscene Studio v1 timeline engine',()=>{
       {id:'c',timeMs:5000,label:'Close',camera:{zoom:1.6,panX:.2,panY:.4}},
     ]};
     expect(evaluateCutscene(project,0).camera).toEqual({zoom:.8,panX:-.2,panY:0});
-    expect(evaluateCutscene(project,3000).camera).toEqual({zoom:1.2,panX:0,panY:.2});
+    const middle=evaluateCutscene(project,3000).camera;
+    expect(middle.zoom).toBeCloseTo(1.2,8);
+    expect(middle.panX).toBeCloseTo(0,8);
+    expect(middle.panY).toBeCloseTo(.2,8);
     expect(evaluateCutscene(project,6000).camera).toEqual({zoom:1.6,panX:.2,panY:.4});
   });
 
