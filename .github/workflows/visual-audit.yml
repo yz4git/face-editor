@@ -16,7 +16,9 @@ jobs:
       - run: npm install
       - run: npm run build
       - run: npm install --no-save @playwright/test@1.55.0
-      - run: npx playwright install --with-deps chromium
+      # GitHub-hosted Ubuntu already carries Chromium's runtime libraries. Installing the
+      # browser only avoids a slow apt/font reinstall on every 92-part visual-audit run.
+      - run: npx playwright install chromium
       - name: Start preview
         run: |
           npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/face-editor-preview.log 2>&1 &
