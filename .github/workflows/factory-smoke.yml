@@ -23,8 +23,8 @@ jobs:
           for i in {1..30}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
           cat /tmp/face-editor-factory-preview.log
           exit 1
-      - name: Run Character Factory browser smoke
-        run: npx playwright test visual-audit/factory.spec.ts --reporter=line
+      - name: Run Character Factory and Expression System browser smoke
+        run: npx playwright test visual-audit/factory.spec.ts visual-audit/expression.spec.ts --reporter=line
       - uses: actions/upload-artifact@v4
         if: always()
         with:
