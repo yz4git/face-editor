@@ -4,12 +4,14 @@ import './expression.css';
 import './body-proportions.css';
 import './motion.css';
 import './cutscene.css';
+import { applyClothingFactoryBias } from './core/clothingFactoryBias';
 import { EditorApp } from './editor/EditorApp';
 import { FactoryPanel } from './editor/FactoryPanel';
 import { ExpressionPanel } from './editor/ExpressionPanel';
 import { MotionPanel } from './editor/MotionPanel';
 import { CutscenePanel } from './editor/CutscenePanel';
 
+applyClothingFactoryBias();
 const root=document.querySelector<HTMLElement>('#app');
 if(!root) throw new Error('App root not found');
 const editor=new EditorApp(root);
