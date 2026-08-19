@@ -1,4 +1,5 @@
 import type { AccentStyleId, BrowStyleId, CharacterBaseId, CharacterDefinition, EyeStyleId, FaceShapeId, HairStyleId, HoodStyleId, MouthStyleId, NoseStyleId, OutfitStyleId, ShirtStyleId, StrapStyleId } from '../core/types';
+import { DEFAULT_BODY_PROPORTIONS, normalizeBodyProportions } from '../core/bodyProportions';
 import { ACCENT_PARTS, BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, HOOD_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS, SHIRT_PARTS, STRAP_PARTS } from './partLibrary';
 
 export interface Option<T extends string> { id:T; label:string }
@@ -25,6 +26,7 @@ export const JACKET_COLORS=['#0b5cad','#2453a4','#166f76','#7a3d8e','#a74343','#
 export const DEFAULT_CHARACTER:CharacterDefinition={
   version:1,
   baseStyle:'female',outfitStyle:'hooded',hoodStyle:'folded',shirtStyle:'tee',strapStyle:'simple',accentStyle:'diamond',hairStyle:'ponytail',faceShape:'soft',eyeStyle:'bright',browStyle:'soft',noseStyle:'diamond',mouthStyle:'smile-open',
+  bodyProportions:structuredClone(DEFAULT_BODY_PROPORTIONS),
   colors:{skin:'#ffd0aa',hair:'#39281d',eyes:'#5a351b',brows:'#39281d',jacket:'#0b5cad',accent:'#f1bd42'},
   transforms:{
     eyes:{x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0},
@@ -37,7 +39,7 @@ export const DEFAULT_CHARACTER:CharacterDefinition={
 export function normalizeCharacter(input:Partial<CharacterDefinition>|null|undefined):CharacterDefinition{
   const base=structuredClone(DEFAULT_CHARACTER);
   if(!input)return base;
-  const out={...base,...input,colors:{...base.colors,...input.colors},transforms:{...base.transforms}} as CharacterDefinition;
+  const out={...base,...input,bodyProportions:normalizeBodyProportions(input.bodyProportions),colors:{...base.colors,...input.colors},transforms:{...base.transforms}} as CharacterDefinition;
   for(const key of ['eyes','brows','nose','mouth'] as const){out.transforms[key]={...base.transforms[key],...(input.transforms?.[key]??{})};}
   if(!out.baseStyle)out.baseStyle='female';
   if(!out.outfitStyle)out.outfitStyle='hooded';
