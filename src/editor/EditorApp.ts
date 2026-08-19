@@ -1,7 +1,8 @@
 import { CharacterRenderer } from '../render/CharacterRenderer';
 import { renderPartThumbnail } from '../render/PartThumbnailRenderer';
 import { exportCharacterBundle } from '../core/compileCharacter';
-import type { CharacterDefinition, CharacterExpressionSet, ExpressionId, PartDefinition, PartTransform } from '../core/types';
+import { BODY_PROPORTION_LIMITS, DEFAULT_BODY_PROPORTIONS, normalizeBodyProportions } from '../core/bodyProportions';
+import type { BodyProportions, CharacterDefinition, CharacterExpressionSet, ExpressionId, PartDefinition, PartTransform } from '../core/types';
 import {
   ACCENT_OPTIONS,BASE_OPTIONS,BROW_OPTIONS,DEFAULT_CHARACTER,EYE_COLORS,EYE_OPTIONS,FACE_OPTIONS,HAIR_COLORS,HAIR_OPTIONS,HOOD_OPTIONS,JACKET_COLORS,MOUTH_OPTIONS,NOSE_OPTIONS,OUTFIT_OPTIONS,SHIRT_OPTIONS,SKIN_COLORS,STRAP_OPTIONS,
 } from '../data/parts';
@@ -15,12 +16,18 @@ const bases=(selected:string)=>BASE_OPTIONS.map(o=>`<button class="base-chip ${o
 
 type TransformKey=keyof CharacterDefinition['transforms'];
 type TransformProp='x'|'y'|'scaleX'|'scaleY'|'rotation'|'spacing';
+type BodyProp=keyof BodyProportions;
 const CONTROL_CONFIG:Record<TransformKey,{prop:TransformProp;label:string;min:number;max:number;step:number}[]>={
   eyes:[{prop:'y',label:'HEIGHT',min:-.22,max:.22,step:.01},{prop:'spacing',label:'SPACING',min:-.12,max:.18,step:.01},{prop:'scaleX',label:'WIDTH',min:.65,max:1.45,step:.01},{prop:'scaleY',label:'HEIGHT SIZE',min:.65,max:1.45,step:.01},{prop:'rotation',label:'ANGLE',min:-.35,max:.35,step:.01}],
   brows:[{prop:'y',label:'HEIGHT',min:-.22,max:.22,step:.01},{prop:'spacing',label:'SPACING',min:-.12,max:.18,step:.01},{prop:'scaleX',label:'WIDTH',min:.65,max:1.45,step:.01},{prop:'scaleY',label:'THICKNESS',min:.6,max:1.6,step:.01},{prop:'rotation',label:'ANGLE',min:-.35,max:.35,step:.01}],
   nose:[{prop:'x',label:'X',min:-.18,max:.18,step:.01},{prop:'y',label:'HEIGHT',min:-.18,max:.18,step:.01},{prop:'scaleX',label:'WIDTH',min:.65,max:1.45,step:.01},{prop:'scaleY',label:'HEIGHT SIZE',min:.65,max:1.45,step:.01}],
   mouth:[{prop:'x',label:'X',min:-.2,max:.2,step:.01},{prop:'y',label:'HEIGHT',min:-.22,max:.22,step:.01},{prop:'scaleX',label:'WIDTH',min:.6,max:1.55,step:.01},{prop:'scaleY',label:'HEIGHT SIZE',min:.6,max:1.55,step:.01},{prop:'rotation',label:'ANGLE',min:-.25,max:.25,step:.01}],
 };
+const BODY_CONTROLS:{prop:BodyProp;label:string;hint:string;min:number;max:number;step:number}[]=[
+  {prop:'height',label:'HEIGHT',hint:'SHORT ↔ TALL',...BODY_PROPORTION_LIMITS.height},
+  {prop:'build',label:'BUILD',hint:'SLIM ↔ SOLID',...BODY_PROPORTION_LIMITS.build},
+  {prop:'shoulders',label:'SHOULDERS',hint:'NARROW ↔ WIDE',...BODY_PROPORTION_LIMITS.shoulders},
+];
 
 export class EditorApp{
   private state:CharacterDefinition=clone(DEFAULT_CHARACTER);
@@ -53,6 +60,10 @@ export class EditorApp{
           </nav>
           <section class="left-panel panel" id="left-section">
             <h2>BASE</h2><div id="base-options" class="base-options"></div>
+            <section class="body-size-card" id="body-size-section" aria-label="Body size controls">
+              <div class="body-size-header"><div><h2>BODY SIZE</h2><small>FACE SIZE LOCKED</small></div><button type="button" data-action="reset-body">RESET</button></div>
+              <div id="body-controls" class="body-controls"></div>
+            </section>
             <div id="outfit-section">
               <h2>JACKET / SILHOUETTE</h2><div id="outfit-options" class="option-grid"></div>
               <h2>COLLAR / HOOD</h2><div id="hood-options" class="option-grid"></div>
@@ -80,7 +91,7 @@ export class EditorApp{
           </section>
         </main>
         <footer class="bottombar">
-          <div><strong>Generated-source triangle character data</strong><small>Jacket, hood, shirt, harness and accent can now be mixed independently.</small></div>
+          <div><strong>Generated-source triangle character data</strong><small>Face stays fixed while body height, build and shoulder width can change independently.</small></div>
           <div class="save-slots"><span>SAVE SLOT</span>${[1,2,3,4].map(n=>`<button data-slot="${n}" class="${n===1?'selected':''}">${n}</button>`).join('')}</div>
         </footer>
       </div>`;
@@ -93,7 +104,7 @@ export class EditorApp{
   private onClick=(ev:Event)=>{
     const target=(ev.target as HTMLElement).closest<HTMLElement>('button');if(!target)return;
     const action=target.dataset.action;
-    if(action==='randomize'){this.randomize();return;}if(action==='undo'){this.undo();return;}if(action==='redo'){this.redo();return;}if(action==='export'){this.export();return;}if(action==='reset-transform'){this.resetTransform();return;}
+    if(action==='randomize'){this.randomize();return;}if(action==='undo'){this.undo();return;}if(action==='redo'){this.redo();return;}if(action==='export'){this.export();return;}if(action==='reset-transform'){this.resetTransform();return;}if(action==='reset-body'){this.resetBody();return;}
     const slot=target.dataset.slot;if(slot){this.saveToSlot(Number(slot));return;}
     const base=target.dataset.base;if(base){this.pushHistory();this.state.baseStyle=base as CharacterDefinition['baseStyle'];this.commit();return;}
     const adjust=target.dataset.adjust as TransformKey|undefined;if(adjust){this.activeAdjust=adjust;this.renderAdjustControls();return;}
@@ -101,12 +112,17 @@ export class EditorApp{
     const kind=target.dataset.kind,id=target.dataset.id;if(kind&&id){this.pushHistory();this.applySelection(kind,id);this.commit();return;}
     const colorKind=target.dataset.colorKind,color=target.dataset.color;if(colorKind&&color){this.pushHistory();this.applyColor(colorKind,color);this.commit();}
   };
-  private onPointerDown=(ev:Event)=>{const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"][data-transform-prop]');if(input&&!this.sliderEditing){this.pushHistory();this.sliderEditing=true;}};
-  private onInput=(ev:Event)=>{const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"][data-transform-prop]');if(!input)return;if(!this.sliderEditing){this.pushHistory();this.sliderEditing=true;}const key=input.dataset.transformKey as TransformKey,prop=input.dataset.transformProp as TransformProp,value=Number(input.value);(this.state.transforms[key] as PartTransform&Record<TransformProp,number>)[prop]=value;const output=input.parentElement?.querySelector<HTMLOutputElement>('output');if(output)output.value=this.formatControl(prop,value);this.renderPreview();};
-  private onChange=(ev:Event)=>{const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"][data-transform-prop]');if(input)this.sliderEditing=false;};
+  private onPointerDown=(ev:Event)=>{const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"][data-transform-prop],input[type="range"][data-body-prop]');if(input&&!this.sliderEditing){this.pushHistory();this.sliderEditing=true;}};
+  private onInput=(ev:Event)=>{
+    const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"]');if(!input)return;
+    const bodyProp=input.dataset.bodyProp as BodyProp|undefined;
+    if(bodyProp){if(!this.sliderEditing){this.pushHistory();this.sliderEditing=true;}const body=normalizeBodyProportions(this.state.bodyProportions);body[bodyProp]=Number(input.value);this.state.bodyProportions=body;const output=input.parentElement?.querySelector<HTMLOutputElement>('output');if(output)output.value=this.formatBodyValue(body[bodyProp]);this.renderPreview();return;}
+    const prop=input.dataset.transformProp as TransformProp|undefined;if(!prop)return;if(!this.sliderEditing){this.pushHistory();this.sliderEditing=true;}const key=input.dataset.transformKey as TransformKey,value=Number(input.value);(this.state.transforms[key] as PartTransform&Record<TransformProp,number>)[prop]=value;const output=input.parentElement?.querySelector<HTMLOutputElement>('output');if(output)output.value=this.formatControl(prop,value);this.renderPreview();
+  };
+  private onChange=(ev:Event)=>{const input=(ev.target as HTMLElement).closest<HTMLInputElement>('input[type="range"][data-transform-prop],input[type="range"][data-body-prop]');if(input){this.sliderEditing=false;if(input.dataset.bodyProp)this.renderBodyControls();}};
 
   public getCharacterDefinition(){return clone(this.state);}
-  public applyCharacterDefinition(definition:CharacterDefinition){this.pushHistory();this.state=clone(definition);this.commit();}
+  public applyCharacterDefinition(definition:CharacterDefinition){this.pushHistory();this.state=clone(definition);this.state.bodyProportions=normalizeBodyProportions(this.state.bodyProportions);this.commit();}
   public setPreviewTransformer(transformer:((definition:CharacterDefinition)=>CharacterDefinition)|null){this.previewTransformer=transformer;this.renderPreview();}
   public setExpressionExportState(active:ExpressionId,set:CharacterExpressionSet){this.expressionExportState={active,set:clone(set)};}
 
@@ -119,15 +135,20 @@ export class EditorApp{
   private undo(){const prev=this.history.pop();if(prev){this.redoHistory.push(clone(this.state));this.state=prev;this.commit();}}
   private redo(){const next=this.redoHistory.pop();if(next){this.history.push(clone(this.state));this.state=next;this.commit();}}
   private resetTransform(){this.pushHistory();this.state.transforms[this.activeAdjust]={x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0};this.commit();}
-  private export(){const options=this.expressionExportState?{activeExpression:this.expressionExportState.active,expressionSet:this.expressionExportState.set}:undefined,bundle=exportCharacterBundle(this.state,options),blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='polygon-character.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);}
-  private saveToSlot(slot:number){this.activeSlot=slot;localStorage.setItem(`face-editor:slot:${slot}`,JSON.stringify(this.state));this.renderUI();}
+  private resetBody(){this.pushHistory();this.state.bodyProportions=clone(DEFAULT_BODY_PROPORTIONS);this.commit();}
+  private export(){this.state.bodyProportions=normalizeBodyProportions(this.state.bodyProportions);const options=this.expressionExportState?{activeExpression:this.expressionExportState.active,expressionSet:this.expressionExportState.set}:undefined,bundle=exportCharacterBundle(this.state,options),blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='polygon-character.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),0);}
+  private saveToSlot(slot:number){this.activeSlot=slot;this.state.bodyProportions=normalizeBodyProportions(this.state.bodyProportions);localStorage.setItem(`face-editor:slot:${slot}`,JSON.stringify(this.state));this.renderUI();}
   private focusSection(name:string,button:HTMLElement){this.root.querySelectorAll('.category-rail button').forEach(x=>x.classList.remove('active'));button.classList.add('active');const adjustMap:Record<string,TransformKey|undefined>={eyes:'eyes',eyebrows:'brows',nose:'nose',mouth:'mouth'};if(adjustMap[name])this.activeAdjust=adjustMap[name]!;const id=name==='outline'?'outline-section':name==='color'?'left-section':`${name}-section`;this.root.querySelector(`#${id}`)?.scrollIntoView({behavior:'smooth',block:'nearest'});this.renderAdjustControls();}
 
   private renderUI(){
-    this.setHTML('#base-options',bases(this.state.baseStyle));this.setHTML('#outfit-options',buttons('outfit',OUTFIT_OPTIONS,this.state.outfitStyle));this.setHTML('#hood-options',buttons('hood',HOOD_OPTIONS,this.state.hoodStyle));this.setHTML('#shirt-options',buttons('shirt',SHIRT_OPTIONS,this.state.shirtStyle));this.setHTML('#strap-options',buttons('strap',STRAP_OPTIONS,this.state.strapStyle));this.setHTML('#accent-options',buttons('accent',ACCENT_OPTIONS,this.state.accentStyle));this.setHTML('#hair-options',buttons('hair',HAIR_OPTIONS,this.state.hairStyle));this.setHTML('#hair-colors',swatches('hair',HAIR_COLORS,this.state.colors.hair));this.setHTML('#skin-colors',swatches('skin',SKIN_COLORS,this.state.colors.skin));this.setHTML('#jacket-colors',swatches('jacket',JACKET_COLORS,this.state.colors.jacket));
+    this.setHTML('#base-options',bases(this.state.baseStyle));this.renderBodyControls();this.setHTML('#outfit-options',buttons('outfit',OUTFIT_OPTIONS,this.state.outfitStyle));this.setHTML('#hood-options',buttons('hood',HOOD_OPTIONS,this.state.hoodStyle));this.setHTML('#shirt-options',buttons('shirt',SHIRT_OPTIONS,this.state.shirtStyle));this.setHTML('#strap-options',buttons('strap',STRAP_OPTIONS,this.state.strapStyle));this.setHTML('#accent-options',buttons('accent',ACCENT_OPTIONS,this.state.accentStyle));this.setHTML('#hair-options',buttons('hair',HAIR_OPTIONS,this.state.hairStyle));this.setHTML('#hair-colors',swatches('hair',HAIR_COLORS,this.state.colors.hair));this.setHTML('#skin-colors',swatches('skin',SKIN_COLORS,this.state.colors.skin));this.setHTML('#jacket-colors',swatches('jacket',JACKET_COLORS,this.state.colors.jacket));
     this.setHTML('#face-options',buttons('face',FACE_OPTIONS,this.state.faceShape));this.setHTML('#eye-options',buttons('eye',EYE_OPTIONS,this.state.eyeStyle));this.setHTML('#eye-colors',swatches('eyes',EYE_COLORS,this.state.colors.eyes));this.setHTML('#brow-options',buttons('brow',BROW_OPTIONS,this.state.browStyle));this.setHTML('#nose-options',buttons('nose',NOSE_OPTIONS,this.state.noseStyle));this.setHTML('#mouth-options',buttons('mouth',MOUTH_OPTIONS,this.state.mouthStyle));
     this.root.querySelectorAll<HTMLButtonElement>('[data-slot]').forEach(b=>b.classList.toggle('selected',Number(b.dataset.slot)===this.activeSlot));
     this.renderPartThumbnails();this.renderAdjustControls();
+  }
+  private renderBodyControls(){
+    const body=normalizeBodyProportions(this.state.bodyProportions);this.state.bodyProportions=body;
+    this.setHTML('#body-controls',BODY_CONTROLS.map(control=>`<label class="body-control"><span><strong>${control.label}</strong><small>${control.hint}</small></span><input type="range" data-body-prop="${control.prop}" min="${control.min}" max="${control.max}" step="${control.step}" value="${body[control.prop]}" aria-label="Body ${control.label.toLowerCase()}"><output>${this.formatBodyValue(body[control.prop])}</output></label>`).join(''));
   }
   private renderPartThumbnails(){
     const defs:Record<string,Record<string,PartDefinition>>={outfit:OUTFIT_PARTS,hood:HOOD_PARTS,shirt:SHIRT_PARTS,strap:STRAP_PARTS,accent:ACCENT_PARTS,hair:HAIR_PARTS,face:FACE_PARTS,eye:EYE_PARTS,brow:BROW_PARTS,nose:NOSE_PARTS,mouth:MOUTH_PARTS};
@@ -138,6 +159,7 @@ export class EditorApp{
     const t=this.state.transforms[this.activeAdjust],controls=CONTROL_CONFIG[this.activeAdjust].map(c=>{const value=(t[c.prop]??(c.prop==='spacing'?0:1)) as number;return`<label class="adjust-row"><span>${c.label}</span><input type="range" data-transform-key="${this.activeAdjust}" data-transform-prop="${c.prop}" min="${c.min}" max="${c.max}" step="${c.step}" value="${value}"><output>${this.formatControl(c.prop,value)}</output></label>`;}).join('');
     this.setHTML('#adjust-controls',`${controls}<button class="reset-transform" data-action="reset-transform">RESET ${this.activeAdjust.toUpperCase()}</button>`);
   }
+  private formatBodyValue(value:number){return`${Math.round(value*100)}%`;}
   private formatControl(prop:TransformProp,value:number){return prop==='rotation'?`${Math.round(value*180/Math.PI)}°`:value.toFixed(2);}
   private updateRendererBadge(){const badge=this.root.querySelector('#renderer-mode');if(badge)badge.textContent=this.renderer?this.renderer.getMode().toUpperCase():'RENDERER';}
   private setHTML(selector:string,html:string){const el=this.root.querySelector(selector);if(el)el.innerHTML=html;}

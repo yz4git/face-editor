@@ -1,6 +1,7 @@
 import './styles.css';
 import './factory.css';
 import './expression.css';
+import './body-proportions.css';
 import { EditorApp } from './editor/EditorApp';
 import { FactoryPanel } from './editor/FactoryPanel';
 import { ExpressionPanel } from './editor/ExpressionPanel';
