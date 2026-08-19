@@ -53,6 +53,13 @@ export class ExpressionPanel{
 
   getActiveExpression(){return this.active;}
   getExpressionSet(){return cloneExpressionSet(this.set);}
+  applyExpressionState(active:ExpressionId,set:CharacterExpressionSet){
+    if(!EXPRESSION_ORDER.includes(active))return;
+    this.active=active;
+    this.set=cloneExpressionSet(set);
+    this.apply();
+    this.render();
+  }
 
   dispose(){
     this.host.removeEventListener('click',this.onClick);

@@ -15,8 +15,9 @@ new FactoryPanel(root,{
   applyCharacter:(definition)=>editor.applyCharacterDefinition(definition),
 });
 
-new ExpressionPanel(root,{
+const expressionPanel=new ExpressionPanel(root,{
   getCharacter:()=>editor.getCharacterDefinition(),
   setPreviewTransformer:(transformer)=>editor.setPreviewTransformer(transformer),
   setExpressionExportState:(active,set)=>editor.setExpressionExportState(active,set),
 });
+editor.setExpressionRestoreHandler((active,set)=>expressionPanel.applyExpressionState(active,set));
