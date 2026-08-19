@@ -1,10 +1,11 @@
-import type { AccentStyleId, CharacterBundle, CharacterDefinition, ColorRole, CompiledPolygonCharacter, CompiledPolygonLayer, OutfitStyleId, PartDefinition, PartTransform, Vec2 } from './types';
+import type { AccentStyleId, CharacterBundle, CharacterDefinition, CharacterExpressionSet, ColorRole, CompiledPolygonCharacter, CompiledPolygonLayer, ExpressionId, OutfitStyleId, PartDefinition, PartTransform, Vec2 } from './types';
 import { ACCENT_PARTS, BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, HOOD_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS, SHIRT_PARTS, STRAP_PARTS } from '../data/partLibrary';
 import { autoRepairTransform } from '../data/generated/autoRepairOverrides';
 import { ACCENT_PHASE2_AUTO_FIT, BROW_AUTO_FIT, EYE_AUTO_FIT, FACE_PHASE2_AUTO_FIT, HAIR_PHASE2_AUTO_FIT, HAIR_SOURCE_FIT, HOOD_PHASE2_AUTO_FIT, MOUTH_AUTO_FIT, NOSE_AUTO_FIT, OUTFIT_PHASE2_AUTO_FIT, SHIRT_PHASE2_AUTO_FIT, STRAP_PHASE2_AUTO_FIT, canonicalLayerZ, composeAxisAlignedTransforms } from './autoFit';
 
 type LayerDraft={id:string;zIndex:number;positions:number[];colors:number[];indices:number[]};
 export interface CompileCharacterOptions {repairTransforms?:Readonly<Record<string,PartTransform>>}
+export interface ExportCharacterOptions {activeExpression?:ExpressionId;expressionSet?:CharacterExpressionSet}
 const IDENTITY:PartTransform={x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0};
 const clamp=(n:number)=>Math.max(0,Math.min(255,n));
 const rgb=(hex:string)=>{const h=hex.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)] as const;};
@@ -47,4 +48,4 @@ export function compileCharacter(c:CharacterDefinition,options?:CompileCharacter
   emitPart(d,c,MOUTH_PARTS[c.mouthStyle],c.transforms.mouth,[0,.21],false,undefined,repaired(MOUTH_AUTO_FIT[c.mouthStyle],options,'mouth',c.mouthStyle));
   const layers=d.compile();let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const layer of layers)for(let i=0;i<layer.positions.length;i+=3){const x=layer.positions[i],y=layer.positions[i+1];minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}return{version:1,layers,bounds:{minX,minY,maxX,maxY}};
 }
-export function exportCharacterBundle(definition:CharacterDefinition):CharacterBundle{const mesh=compileCharacter(definition);return{format:'face-editor-polygon-character',formatVersion:1,definition:structuredClone(definition),mesh:{version:1,bounds:mesh.bounds,layers:mesh.layers.map(l=>({id:l.id,zIndex:l.zIndex,positions:Array.from(l.positions),colors:Array.from(l.colors),indices:Array.from(l.indices)}))}};}
+export function exportCharacterBundle(definition:CharacterDefinition,options:ExportCharacterOptions={}):CharacterBundle{const mesh=compileCharacter(definition);const bundle:CharacterBundle={format:'face-editor-polygon-character',formatVersion:1,definition:structuredClone(definition),mesh:{version:1,bounds:mesh.bounds,layers:mesh.layers.map(l=>({id:l.id,zIndex:l.zIndex,positions:Array.from(l.positions),colors:Array.from(l.colors),indices:Array.from(l.indices)}))}};if(options.expressionSet)bundle.expressions={active:options.activeExpression??options.expressionSet.defaultExpression,set:structuredClone(options.expressionSet)};return bundle;}
