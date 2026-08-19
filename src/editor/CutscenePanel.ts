@@ -55,12 +55,12 @@ export class CutscenePanel{
     if(button.dataset.cutsceneClose){this.open=false;this.releaseDrive();this.render();return;}
     const template=button.dataset.cutsceneTemplate as CutsceneTemplateId|undefined;if(template&&TEMPLATE_ORDER.includes(template)){this.useTemplate(template);return;}
     const cueId=button.dataset.cutsceneCue;if(cueId){this.selectedCueId=cueId;const cue=this.project.cues.find(item=>item.id===cueId);if(cue)this.seek(cue.timeMs);this.render();return;}
-    if(button.dataset.cutscenePlay){this.playing?this.pause():this.play();return;}
-    if(button.dataset.cutsceneRestart){this.seek(0);return;}
-    if(button.dataset.cutscenePrev){this.jumpCue(-1);return;}
-    if(button.dataset.cutsceneNext){this.jumpCue(1);return;}
-    if(button.dataset.cutsceneAdd){this.addCue();return;}
-    if(button.dataset.cutsceneDelete){this.deleteCue();return;}
+    if(button.dataset.cutscenePlay!==undefined){this.playing?this.pause():this.play();return;}
+    if(button.dataset.cutsceneRestart!==undefined){this.seek(0);return;}
+    if(button.dataset.cutscenePrev!==undefined){this.jumpCue(-1);return;}
+    if(button.dataset.cutsceneNext!==undefined){this.jumpCue(1);return;}
+    if(button.dataset.cutsceneAdd!==undefined){this.addCue();return;}
+    if(button.dataset.cutsceneDelete!==undefined){this.deleteCue();return;}
   };
 
   private onInput=(event:Event)=>{
