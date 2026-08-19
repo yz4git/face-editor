@@ -42,3 +42,13 @@ test('Body Size changes only the body with three simple controls and reset',asyn
 
   await page.screenshot({path:'test-results/body-proportions-v1.png',fullPage:true});
 });
+
+test('Body Size keeps finger-sized slider hit targets on iPhone landscape',async({page})=>{
+  await page.setViewportSize({width:844,height:390});
+  await page.goto('http://127.0.0.1:4173/?renderer=canvas2d');
+  const panel=page.locator('#body-size-section');await panel.scrollIntoViewIfNeeded();await expect(panel).toBeVisible();
+  const controls=panel.locator('input[data-body-prop]');await expect(controls).toHaveCount(3);
+  const boxes=await controls.evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return{width:box.width,height:box.height};}));
+  for(const box of boxes){expect(box.height).toBeGreaterThanOrEqual(44);expect(box.width).toBeGreaterThan(60);}
+  await page.screenshot({path:'test-results/body-proportions-iphone-landscape.png',fullPage:true});
+});
