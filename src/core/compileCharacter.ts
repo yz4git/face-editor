@@ -23,10 +23,16 @@ const repaired=(base:PartTransform,options:CompileCharacterOptions|undefined,fam
 const TRIANGLE_ACCENT_MAX_Y=-.28;
 function emitSkinUnderlay(d:Drafts,c:CharacterDefinition){const skin=roleColor('skin',c,-3);d.tri('skin-base',0,[[-.22,.18],[.22,.18],[.25,-.42]],skin);d.tri('skin-base',0,[[-.22,.18],[.25,-.42],[-.25,-.42]],skin);}
 function emitOutfitUnderlay(d:Drafts,c:CharacterDefinition,id:OutfitStyleId){
-  const jacket=roleColor('jacket',c,-4);d.tri('jacket-underlay',.5,[[-.43,-.43],[.43,-.43],[.52,-1.82]],jacket);d.tri('jacket-underlay',.5,[[-.43,-.43],[.52,-1.82],[-.52,-1.82]],jacket);
-  if(id==='vest')return;const end=id==='short-sleeve'?-1.15:-1.68,innerEnd=id==='short-sleeve'?-1.02:-1.55;
-  d.tri('jacket-underlay',.5,[[-.48,-.48],[-.86,-.67],[-.80,end]],jacket);d.tri('jacket-underlay',.5,[[-.48,-.48],[-.80,end],[-.52,innerEnd]],jacket);
-  d.tri('jacket-underlay',.5,[[.48,-.48],[.86,-.67],[.80,end]],jacket);d.tri('jacket-underlay',.5,[[.48,-.48],[.80,end],[.52,innerEnd]],jacket);
+  const jacket=roleColor('jacket',c,-4);
+  const torsoHem=id==='long-coat'?-2.34:id==='cropped-jacket'?-1.30:id==='bomber'?-1.58:-1.82;
+  const torsoHalf=id==='long-coat'?.67:id==='tech-parka'?.60:id==='tactical-jacket'?.57:id==='bomber'?.56:id==='cropped-jacket'?.53:.52;
+  d.tri('jacket-underlay',.5,[[-.43,-.43],[.43,-.43],[torsoHalf,torsoHem]],jacket);d.tri('jacket-underlay',.5,[[-.43,-.43],[torsoHalf,torsoHem],[-torsoHalf,torsoHem]],jacket);
+  if(id==='vest')return;
+  const shortSleeve=id==='short-sleeve',cropped=id==='cropped-jacket',bomber=id==='bomber';
+  const end=shortSleeve?-1.15:cropped?-1.54:bomber?-1.58:-1.68,innerEnd=shortSleeve?-1.02:cropped?-1.42:bomber?-1.46:-1.55;
+  const outer=id==='tech-parka'||id==='bomber'?-.91:-.86;
+  d.tri('jacket-underlay',.5,[[-.48,-.48],[outer,-.67],[-.80,end]],jacket);d.tri('jacket-underlay',.5,[[-.48,-.48],[-.80,end],[-.52,innerEnd]],jacket);
+  d.tri('jacket-underlay',.5,[[.48,-.48],[-outer,-.67],[.80,end]],jacket);d.tri('jacket-underlay',.5,[[.48,-.48],[.80,end],[.52,innerEnd]],jacket);
 }
 function emitAccent(d:Drafts,c:CharacterDefinition,id:AccentStyleId,options?:CompileCharacterOptions){const fit=repaired(ACCENT_PHASE2_AUTO_FIT[id],options,'accent',id);for(const item of ACCENT_PARTS[id].triangles){if(id==='triangle'&&Math.max(...item.points.map(point=>point[1]))>TRIANGLE_ACCENT_MAX_Y)continue;d.tri(item.layer,item.zIndex,item.points.map(point=>apply(point,fit)),roleColor(item.colorRole,c,item.shade??0));}}
 function emitOutfit(d:Drafts,c:CharacterDefinition,options?:CompileCharacterOptions){
