@@ -60,12 +60,13 @@ export class CharacterRenderer{
     if(this.renderer)for(const layer of this.current.layers){const mesh=this.meshByLayer.get(layer.id),attribute=mesh?.geometry.getAttribute('position');if(attribute)attribute.needsUpdate=true;}
     if(reframe)this.frame(this.current);this.render();
   }
-  private frame(c:CompiledPolygonCharacter){const{minX,maxX,minY,maxY}=c.bounds,aspect=Math.max(this.host.clientWidth,1)/Math.max(this.host.clientHeight,1),half=Math.max(maxX-minX,maxY-minY)*.62;this.camera.left=-half*aspect;this.camera.right=half*aspect;this.camera.top=half;this.camera.bottom=-half;this.camera.position.x=(minX+maxX)/2;this.camera.position.y=(minY+maxY)/2;this.camera.updateProjectionMatrix();}
+  private frameScale(){return this.auditMode?.58:.62;}
+  private frame(c:CompiledPolygonCharacter){const{minX,maxX,minY,maxY}=c.bounds,aspect=Math.max(this.host.clientWidth,1)/Math.max(this.host.clientHeight,1),half=Math.max(maxX-minX,maxY-minY)*this.frameScale();this.camera.left=-half*aspect;this.camera.right=half*aspect;this.camera.top=half;this.camera.bottom=-half;this.camera.position.x=(minX+maxX)/2;this.camera.position.y=(minY+maxY)/2;this.camera.updateProjectionMatrix();}
   private resize(){const width=Math.max(1,this.host.clientWidth),height=Math.max(1,this.host.clientHeight);if(this.renderer)this.renderer.setSize(width,height,false);else if(this.fallbackCanvas){const dpr=Math.min(window.devicePixelRatio||1,2);this.fallbackCanvas.width=Math.max(1,Math.floor(width*dpr));this.fallbackCanvas.height=Math.max(1,Math.floor(height*dpr));}this.render();}
   private render(){
     if(this.renderer){this.renderer.render(this.scene,this.camera);return;}
     const canvas=this.fallbackCanvas,ctx=this.fallbackContext,character=this.current;if(!canvas||!ctx||!character)return;
-    const width=canvas.width,height=canvas.height,{minX,maxX,minY,maxY}=character.bounds,centerX=(minX+maxX)/2,centerY=(minY+maxY)/2,half=Math.max(maxX-minX,maxY-minY)*.62,aspect=width/Math.max(height,1);
+    const width=canvas.width,height=canvas.height,{minX,maxX,minY,maxY}=character.bounds,centerX=(minX+maxX)/2,centerY=(minY+maxY)/2,half=Math.max(maxX-minX,maxY-minY)*this.frameScale(),aspect=width/Math.max(height,1);
     const toCanvas=(x:number,y:number)=>({x:((x-centerX)+half*aspect)/(2*half*aspect)*width,y:(centerY+half-y)/(2*half)*height});ctx.clearRect(0,0,width,height);ctx.imageSmoothingEnabled=true;ctx.lineJoin='round';ctx.lineCap='round';
     for(const layer of character.layers){const{positions,colors,indices}=layer;for(let i=0;i<indices.length;i+=3){const ia=indices[i]*3,ib=indices[i+1]*3,ic=indices[i+2]*3,p0=toCanvas(positions[ia],positions[ia+1]),p1=toCanvas(positions[ib],positions[ib+1]),p2=toCanvas(positions[ic],positions[ic+1]);const r=Math.round((colors[ia]+colors[ib]+colors[ic])/3*255),g=Math.round((colors[ia+1]+colors[ib+1]+colors[ic+1])/3*255),b=Math.round((colors[ia+2]+colors[ib+2]+colors[ic+2])/3*255),fill=`rgb(${r},${g},${b})`;ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=fill;ctx.lineWidth=.9;ctx.stroke();}}
   }
