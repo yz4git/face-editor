@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { compileCharacter, type CompileCharacterOptions } from '../core/compileCharacter';
-import type { CharacterDefinition, CompiledPolygonCharacter, PartTransform } from '../core/types';
+import { normalizeCutsceneCamera } from '../core/cutsceneSystem';
+import type { CharacterDefinition, CompiledPolygonCharacter, CutsceneCameraState, PartTransform } from '../core/types';
 
 export type RendererMode='webgl'|'canvas2d';
 export type CompiledPreviewMutator=(character:CompiledPolygonCharacter,timeMs:number)=>void;
@@ -22,6 +23,7 @@ export class CharacterRenderer{
   private current:CompiledPolygonCharacter|null=null;
   private compiledMutator:CompiledPreviewMutator|null=null;
   private animationTime=0;
+  private previewCamera:CutsceneCameraState={zoom:1,panX:0,panY:0};
   private root=new THREE.Group();
   private meshByLayer=new Map<string,THREE.Mesh>();
   private observer:ResizeObserver;
@@ -35,6 +37,7 @@ export class CharacterRenderer{
     this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(this.host);this.resize();this.publishMode();
   }
   getMode():RendererMode{return this.mode;}
+  getPreviewCamera():CutsceneCameraState{return{...this.previewCamera};}
   private tryWebGL(){
     try{
       const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x000000,0);renderer.domElement.className='character-canvas';
@@ -52,6 +55,7 @@ export class CharacterRenderer{
   }
   setCompiledPreviewMutator(mutator:CompiledPreviewMutator|null){this.compiledMutator=mutator;this.refreshCurrent(true);}
   setAnimationTime(timeMs:number){if(!Number.isFinite(timeMs))return;this.animationTime=timeMs;this.refreshCurrent(false);}
+  setPreviewCamera(input:Partial<CutsceneCameraState>|null){this.previewCamera=input?normalizeCutsceneCamera(input):{zoom:1,panX:0,panY:0};if(this.current)this.frame(this.current);this.render();}
   private applyCompiledMutation(){if(this.current&&this.compiledMutator)this.compiledMutator(this.current,this.animationTime);}
   private refreshCurrent(reframe:boolean){
     if(!this.sourceCurrent||!this.current)return;
@@ -61,13 +65,17 @@ export class CharacterRenderer{
     if(reframe)this.frame(this.current);this.render();
   }
   private frameScale(){return this.auditMode?.58:.62;}
-  private frame(c:CompiledPolygonCharacter){const{minX,maxX,minY,maxY}=c.bounds,aspect=Math.max(this.host.clientWidth,1)/Math.max(this.host.clientHeight,1),half=Math.max(maxX-minX,maxY-minY)*this.frameScale();this.camera.left=-half*aspect;this.camera.right=half*aspect;this.camera.top=half;this.camera.bottom=-half;this.camera.position.x=(minX+maxX)/2;this.camera.position.y=(minY+maxY)/2;this.camera.updateProjectionMatrix();}
-  private resize(){const width=Math.max(1,this.host.clientWidth),height=Math.max(1,this.host.clientHeight);if(this.renderer)this.renderer.setSize(width,height,false);else if(this.fallbackCanvas){const dpr=Math.min(window.devicePixelRatio||1,2);this.fallbackCanvas.width=Math.max(1,Math.floor(width*dpr));this.fallbackCanvas.height=Math.max(1,Math.floor(height*dpr));}this.render();}
+  private framedView(c:CompiledPolygonCharacter,aspect:number){
+    const{minX,maxX,minY,maxY}=c.bounds,baseHalf=Math.max(maxX-minX,maxY-minY)*this.frameScale(),half=baseHalf/this.previewCamera.zoom,baseCenterX=(minX+maxX)/2,baseCenterY=(minY+maxY)/2;
+    return{half,aspect,centerX:baseCenterX+this.previewCamera.panX*baseHalf*.55,centerY:baseCenterY+this.previewCamera.panY*baseHalf*.55};
+  }
+  private frame(c:CompiledPolygonCharacter){const aspect=Math.max(this.host.clientWidth,1)/Math.max(this.host.clientHeight,1),view=this.framedView(c,aspect);this.camera.left=-view.half*view.aspect;this.camera.right=view.half*view.aspect;this.camera.top=view.half;this.camera.bottom=-view.half;this.camera.position.x=view.centerX;this.camera.position.y=view.centerY;this.camera.updateProjectionMatrix();}
+  private resize(){const width=Math.max(1,this.host.clientWidth),height=Math.max(1,this.host.clientHeight);if(this.renderer)this.renderer.setSize(width,height,false);else if(this.fallbackCanvas){const dpr=Math.min(window.devicePixelRatio||1,2);this.fallbackCanvas.width=Math.max(1,Math.floor(width*dpr));this.fallbackCanvas.height=Math.max(1,Math.floor(height*dpr));}if(this.current)this.frame(this.current);this.render();}
   private render(){
     if(this.renderer){this.renderer.render(this.scene,this.camera);return;}
     const canvas=this.fallbackCanvas,ctx=this.fallbackContext,character=this.current;if(!canvas||!ctx||!character)return;
-    const width=canvas.width,height=canvas.height,{minX,maxX,minY,maxY}=character.bounds,centerX=(minX+maxX)/2,centerY=(minY+maxY)/2,half=Math.max(maxX-minX,maxY-minY)*this.frameScale(),aspect=width/Math.max(height,1);
-    const toCanvas=(x:number,y:number)=>({x:((x-centerX)+half*aspect)/(2*half*aspect)*width,y:(centerY+half-y)/(2*half)*height});ctx.clearRect(0,0,width,height);ctx.imageSmoothingEnabled=true;ctx.lineJoin='round';ctx.lineCap='round';
+    const width=canvas.width,height=canvas.height,view=this.framedView(character,width/Math.max(height,1));
+    const toCanvas=(x:number,y:number)=>({x:((x-view.centerX)+view.half*view.aspect)/(2*view.half*view.aspect)*width,y:(view.centerY+view.half-y)/(2*view.half)*height});ctx.clearRect(0,0,width,height);ctx.imageSmoothingEnabled=true;ctx.lineJoin='round';ctx.lineCap='round';
     for(const layer of character.layers){const{positions,colors,indices}=layer;for(let i=0;i<indices.length;i+=3){const ia=indices[i]*3,ib=indices[i+1]*3,ic=indices[i+2]*3,p0=toCanvas(positions[ia],positions[ia+1]),p1=toCanvas(positions[ib],positions[ib+1]),p2=toCanvas(positions[ic],positions[ic+1]);const r=Math.round((colors[ia]+colors[ib]+colors[ic])/3*255),g=Math.round((colors[ia+1]+colors[ib+1]+colors[ic+1])/3*255),b=Math.round((colors[ia+2]+colors[ib+2]+colors[ic+2])/3*255),fill=`rgb(${r},${g},${b})`;ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=fill;ctx.lineWidth=.9;ctx.stroke();}}
   }
   private disposeMeshes(){this.meshByLayer.clear();while(this.root.children.length){const child=this.root.children.pop();if(child instanceof THREE.Mesh){child.geometry.dispose();const m=child.material;Array.isArray(m)?m.forEach(x=>x.dispose()):m.dispose();}}}
