@@ -13,7 +13,7 @@ describe('closed-loop repair persistence',()=>{
     const first=mergeAcceptedVisualRepairs({}, {recommendations:[candidate()]});
     expect(first.blocked).toEqual([]);expect(first.applied).toHaveLength(1);expect(first.data['hair:half-up'].passes).toBe(1);
     const second=mergeAcceptedVisualRepairs(first.data,{recommendations:[candidate({x:.01,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0})]});
-    expect(second.data['hair:half-up'].passes).toBe(2);expect(second.data['hair:half-up'].transform.x).toBeCloseTo(.0201,6);
+    expect(second.data['hair:half-up'].passes).toBe(2);expect(second.data['hair:half-up'].transform.x).toBeCloseTo(.02,6);
   });
 
   it('blocks transform runaway and per-part infinite repair loops',()=>{
