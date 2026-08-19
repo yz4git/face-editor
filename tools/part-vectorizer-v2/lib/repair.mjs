@@ -4,6 +4,8 @@ export const REPAIR_PROFILES={
   'color-detail':{name:'color-detail',options:{mode:'polygon',hierarchical:'cutout',clustering:'color-cluster',filterSpeckle:2,colorPrecision:9,layerDifference:6,cornerThreshold:60,lengthThreshold:3,simplify:.7,pathPrecision:3,maxColors:16,optimize:0}},
 };
 
+export const repairTargetKey=value=>`${value?.family??value?.kind}:${value?.id}`;
+
 export function repairProfileIdsForResult(result){
   const ids=[];
   const metricScores=result?.metricScores??{},metrics=result?.metrics??{};
@@ -21,6 +23,11 @@ export function selectRepairTargets(report,{triggerScore=6}={}){
     if(profiles.length)targets.push({family:family.family,id:result.id,score:Number(result.score??0),critical:Boolean(result.critical),profiles});
   }
   return targets.sort((a,b)=>b.score-a.score);
+}
+
+export function selectManifestRepairItems(items,targets){
+  const wanted=new Set((targets??[]).map(repairTargetKey)),selected=(items??[]).filter(item=>wanted.has(repairTargetKey(item))),matched=new Set(selected.map(repairTargetKey)),missing=[...wanted].filter(key=>!matched.has(key));
+  return{items:selected,missing};
 }
 
 export function compareRepairToBaseline(summary,baselineSummary,{scoreTolerance=1e-9}={}){
