@@ -5,7 +5,8 @@ import type { CharacterDefinition, CompiledPolygonCharacter, CutsceneCameraState
 
 export type RendererMode='webgl'|'canvas2d';
 export type CompiledPreviewMutator=(character:CompiledPolygonCharacter,timeMs:number)=>void;
-type AuditWindow=Window&{__FACE_EDITOR_RENDERER_MODE__?:RendererMode;__FACE_EDITOR_REPAIR_TRANSFORMS__?:Record<string,PartTransform>};
+export interface PreviewLayerVisibility{hidden?:readonly string[];dimmed?:readonly string[]}
+type AuditWindow=Window&{__FACE_EDITOR_RENDERER_MODE__?:RendererMode;__FACE_EDITOR_REPAIR_TRANSFORMS__?:Record<string,PartTransform>;__FACE_EDITOR_PREVIEW_VISIBILITY__?:PreviewLayerVisibility};
 
 const cloneCompiled=(source:CompiledPolygonCharacter):CompiledPolygonCharacter=>({
   version:1,
@@ -24,6 +25,8 @@ export class CharacterRenderer{
   private compiledMutator:CompiledPreviewMutator|null=null;
   private animationTime=0;
   private previewCamera:CutsceneCameraState={zoom:1,panX:0,panY:0};
+  private hiddenLayers=new Set<string>();
+  private dimmedLayers=new Set<string>();
   private root=new THREE.Group();
   private meshByLayer=new Map<string,THREE.Mesh>();
   private observer:ResizeObserver;
@@ -34,31 +37,40 @@ export class CharacterRenderer{
     const params=new URLSearchParams(location.search),forceCanvas=params.get('renderer')==='canvas2d'||params.get('visualAudit')==='1';this.auditMode=params.get('visualAudit')==='1';
     if(!forceCanvas)this.tryWebGL();if(!this.renderer)this.enableCanvasFallback();
     this.camera.position.set(0,0,10);this.camera.lookAt(0,0,0);this.scene.add(this.root);
-    this.host.addEventListener('preview-camera',this.onPreviewCamera);
-    this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(this.host);this.resize();this.publishMode();
+    this.host.addEventListener('preview-camera',this.onPreviewCamera);this.host.addEventListener('preview-layer-visibility',this.onPreviewLayerVisibility);
+    this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(this.host);this.resize();this.publishMode();this.publishVisibility();
   }
   getMode():RendererMode{return this.mode;}
   getPreviewCamera():CutsceneCameraState{return{...this.previewCamera};}
   private onPreviewCamera=(event:Event)=>{this.setPreviewCamera((event as CustomEvent<Partial<CutsceneCameraState>|null>).detail??null);};
+  private onPreviewLayerVisibility=(event:Event)=>{
+    const detail=(event as CustomEvent<PreviewLayerVisibility|null>).detail;
+    this.hiddenLayers=new Set(detail?.hidden??[]);this.dimmedLayers=new Set(detail?.dimmed??[]);this.publishVisibility();this.applyLayerVisibility();this.render();
+  };
   private tryWebGL(){
     try{
-      const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x000000,0);renderer.domElement.className='character-canvas';
+      const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x000000,0);renderer.domElement.className='character-canvas';renderer.domElement.dataset.renderer='webgl';
       renderer.domElement.addEventListener('webglcontextlost',(event:Event)=>{event.preventDefault();this.renderer?.dispose();this.renderer?.domElement.remove();this.renderer=null;this.enableCanvasFallback();this.resize();this.render();},{once:true});
       this.renderer=renderer;this.mode='webgl';this.host.append(renderer.domElement);
     }catch{this.renderer=null;}
   }
   private enableCanvasFallback(){if(this.fallbackCanvas)return;const canvas=document.createElement('canvas');canvas.className='character-canvas canvas2d-fallback';canvas.dataset.renderer='canvas2d';this.fallbackCanvas=canvas;this.fallbackContext=canvas.getContext('2d');this.host.append(canvas);this.mode='canvas2d';this.publishMode();}
   private publishMode(){this.host.dataset.rendererMode=this.mode;(window as AuditWindow).__FACE_EDITOR_RENDERER_MODE__=this.mode;this.host.dispatchEvent(new CustomEvent('renderer-mode',{detail:{mode:this.mode}}));}
+  private publishVisibility(){const detail={hidden:[...this.hiddenLayers],dimmed:[...this.dimmedLayers]};(window as AuditWindow).__FACE_EDITOR_PREVIEW_VISIBILITY__=detail;this.host.dataset.hiddenLayers=detail.hidden.join(',');this.host.dataset.dimmedLayers=detail.dimmed.join(',');}
   setCharacter(definition:CharacterDefinition):CompiledPolygonCharacter{
     const auditRepairs=this.auditMode?(window as AuditWindow).__FACE_EDITOR_REPAIR_TRANSFORMS__:undefined,options:CompileCharacterOptions|undefined=auditRepairs?{repairTransforms:auditRepairs}:undefined;
     this.sourceCurrent=compileCharacter(definition,options);this.current=cloneCompiled(this.sourceCurrent);this.applyCompiledMutation();this.disposeMeshes();
-    if(this.renderer)for(const layer of this.current.layers){const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(layer.positions,3));geometry.setAttribute('color',new THREE.BufferAttribute(layer.colors,3));geometry.setIndex(new THREE.BufferAttribute(layer.indices,1));const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false});const mesh=new THREE.Mesh(geometry,material);mesh.renderOrder=layer.zIndex;mesh.position.z=layer.zIndex*.002;mesh.name=layer.id;this.root.add(mesh);this.meshByLayer.set(layer.id,mesh);}
-    this.frame(this.current);this.render();return this.current;
+    if(this.renderer)for(const layer of this.current.layers){const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(layer.positions,3));geometry.setAttribute('color',new THREE.BufferAttribute(layer.colors,3));geometry.setIndex(new THREE.BufferAttribute(layer.indices,1));const material=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false,transparent:false,opacity:1});const mesh=new THREE.Mesh(geometry,material);mesh.renderOrder=layer.zIndex;mesh.position.z=layer.zIndex*.002;mesh.name=layer.id;this.root.add(mesh);this.meshByLayer.set(layer.id,mesh);}
+    this.applyLayerVisibility();this.frame(this.current);this.render();return this.current;
   }
   setCompiledPreviewMutator(mutator:CompiledPreviewMutator|null){this.compiledMutator=mutator;this.refreshCurrent(true);}
   setAnimationTime(timeMs:number){if(!Number.isFinite(timeMs))return;this.animationTime=timeMs;this.refreshCurrent(false);}
   setPreviewCamera(input:Partial<CutsceneCameraState>|null){this.previewCamera=input?normalizeCutsceneCamera(input):{zoom:1,panX:0,panY:0};if(this.current)this.frame(this.current);this.render();}
   private applyCompiledMutation(){if(this.current&&this.compiledMutator)this.compiledMutator(this.current,this.animationTime);}
+  private applyLayerVisibility(){
+    if(!this.renderer)return;
+    for(const[layerId,mesh]of this.meshByLayer){const hidden=this.hiddenLayers.has(layerId),dimmed=this.dimmedLayers.has(layerId);mesh.visible=!hidden;const material=mesh.material as THREE.MeshBasicMaterial;material.opacity=dimmed?.16:1;material.transparent=dimmed;material.needsUpdate=true;}
+  }
   private refreshCurrent(reframe:boolean){
     if(!this.sourceCurrent||!this.current)return;
     for(let index=0;index<this.current.layers.length;index++)this.current.layers[index]?.positions.set(this.sourceCurrent.layers[index]?.positions??[]);
@@ -78,8 +90,8 @@ export class CharacterRenderer{
     const canvas=this.fallbackCanvas,ctx=this.fallbackContext,character=this.current;if(!canvas||!ctx||!character)return;
     const width=canvas.width,height=canvas.height,view=this.framedView(character,width/Math.max(height,1));
     const toCanvas=(x:number,y:number)=>({x:((x-view.centerX)+view.half*view.aspect)/(2*view.half*view.aspect)*width,y:(view.centerY+view.half-y)/(2*view.half)*height});ctx.clearRect(0,0,width,height);ctx.imageSmoothingEnabled=true;ctx.lineJoin='round';ctx.lineCap='round';
-    for(const layer of character.layers){const{positions,colors,indices}=layer;for(let i=0;i<indices.length;i+=3){const ia=indices[i]*3,ib=indices[i+1]*3,ic=indices[i+2]*3,p0=toCanvas(positions[ia],positions[ia+1]),p1=toCanvas(positions[ib],positions[ib+1]),p2=toCanvas(positions[ic],positions[ic+1]);const r=Math.round((colors[ia]+colors[ib]+colors[ic])/3*255),g=Math.round((colors[ia+1]+colors[ib+1]+colors[ic+1])/3*255),b=Math.round((colors[ia+2]+colors[ib+2]+colors[ic+2])/3*255),fill=`rgb(${r},${g},${b})`;ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=fill;ctx.lineWidth=.9;ctx.stroke();}}
+    for(const layer of character.layers){if(this.hiddenLayers.has(layer.id))continue;const dimmed=this.dimmedLayers.has(layer.id);ctx.save();ctx.globalAlpha=dimmed?.16:1;const{positions,colors,indices}=layer;for(let i=0;i<indices.length;i+=3){const ia=indices[i]*3,ib=indices[i+1]*3,ic=indices[i+2]*3,p0=toCanvas(positions[ia],positions[ia+1]),p1=toCanvas(positions[ib],positions[ib+1]),p2=toCanvas(positions[ic],positions[ic+1]);const r=Math.round((colors[ia]+colors[ib]+colors[ic])/3*255),g=Math.round((colors[ia+1]+colors[ib+1]+colors[ic+1])/3*255),b=Math.round((colors[ia+2]+colors[ib+2]+colors[ic+2])/3*255),fill=`rgb(${r},${g},${b})`;ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=fill;ctx.lineWidth=.9;ctx.stroke();}ctx.restore();}
   }
   private disposeMeshes(){this.meshByLayer.clear();while(this.root.children.length){const child=this.root.children.pop();if(child instanceof THREE.Mesh){child.geometry.dispose();const m=child.material;Array.isArray(m)?m.forEach(x=>x.dispose()):m.dispose();}}}
-  dispose(){this.host.removeEventListener('preview-camera',this.onPreviewCamera);this.observer.disconnect();this.disposeMeshes();this.renderer?.dispose();this.renderer?.domElement.remove();this.fallbackCanvas?.remove();}
+  dispose(){this.host.removeEventListener('preview-camera',this.onPreviewCamera);this.host.removeEventListener('preview-layer-visibility',this.onPreviewLayerVisibility);this.observer.disconnect();this.disposeMeshes();this.renderer?.dispose();this.renderer?.domElement.remove();this.fallbackCanvas?.remove();}
 }
