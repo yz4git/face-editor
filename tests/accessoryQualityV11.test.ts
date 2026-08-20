@@ -3,6 +3,14 @@ import { accessoryTriangles } from '../src/data/accessoryPackV1Geometry';
 import { EAR_ACCESSORY_OPTIONS,EYEWEAR_OPTIONS,FACE_DETAIL_OPTIONS,HEADWEAR_OPTIONS } from '../src/core/characterExpansion';
 
 const finite=(value:number)=>Number.isFinite(value);
+const verify=(label:string,triangles:ReturnType<typeof accessoryTriangles>)=>{
+  expect(triangles.length,label).toBeGreaterThan(0);
+  for(const triangle of triangles){
+    expect(triangle.points.flat().every(finite)).toBe(true);
+    expect(finite(triangle.zIndex)).toBe(true);
+    expect(finite(triangle.shade)).toBe(true);
+  }
+};
 
 describe('Accessory Quality Pass v1.1',()=>{
   it('replaces every headwear placeholder with a denser silhouette',()=>{
@@ -15,20 +23,9 @@ describe('Accessory Quality Pass v1.1',()=>{
   });
 
   it('keeps all accessory families finite and selectable',()=>{
-    for(const [kind,options] of [
-      ['eyewear',EYEWEAR_OPTIONS],['faceDetail',FACE_DETAIL_OPTIONS],['earAccessory',EAR_ACCESSORY_OPTIONS],
-    ] as const){
-      for(const option of options){
-        const triangles=accessoryTriangles(kind,option.id as never);
-        if(option.id==='none'){expect(triangles).toHaveLength(0);continue;}
-        expect(triangles.length,`${kind}:${option.id}`).toBeGreaterThan(0);
-        for(const triangle of triangles){
-          expect(triangle.points.flat().every(finite)).toBe(true);
-          expect(finite(triangle.zIndex)).toBe(true);
-          expect(finite(triangle.shade)).toBe(true);
-        }
-      }
-    }
+    for(const option of EYEWEAR_OPTIONS){const triangles=accessoryTriangles('eyewear',option.id);if(option.id==='none')expect(triangles).toHaveLength(0);else verify(`eyewear:${option.id}`,triangles);}
+    for(const option of FACE_DETAIL_OPTIONS){const triangles=accessoryTriangles('faceDetail',option.id);if(option.id==='none')expect(triangles).toHaveLength(0);else verify(`faceDetail:${option.id}`,triangles);}
+    for(const option of EAR_ACCESSORY_OPTIONS){const triangles=accessoryTriangles('earAccessory',option.id);if(option.id==='none')expect(triangles).toHaveLength(0);else verify(`earAccessory:${option.id}`,triangles);}
   });
 
   it('uses curved density for the previously coarse beanie, beret and cap',()=>{
