@@ -1,6 +1,6 @@
 import type { FactoryCandidate,FactoryLock,FactoryStyleId } from './characterFactory';
 import type { CharacterDefinition } from './types';
-import { ACCENT_COLORS, HAIR_BACK_OPTIONS, HAIR_EXTRA_OPTIONS, SHIRT_COLORS, TRIM_COLORS, normalizeAccessories, normalizeClothingLayers, normalizeHairModular, setAccessories, setHairModular } from './characterExpansion';
+import { ACCENT_COLORS, HAIR_BACK_OPTIONS, HAIR_EXTRA_OPTIONS, HARDWARE_COLORS, SECONDARY_COLORS, SHIRT_COLORS, TRIM_COLORS, normalizeAccessories, normalizeClothingLayers, normalizeHairModular, setAccessories, setHairModular } from './characterExpansion';
 
 const clone=<T>(value:T):T=>structuredClone(value);
 const hash=(value:string)=>{let h=2166136261>>>0;for(const ch of value){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;};
@@ -32,14 +32,14 @@ const STYLE_ACCESSORIES:Record<FactoryStyleId,{head:readonly string[];eye:readon
   futuristic:{head:['none','sci-fi-visor','goggles-up','headphones'],eye:['none','cyber-visor','sport-goggles','eyepatch'],face:['none','under-eye-line','face-paint','none'],ear:['none','cyber-earpiece','comms-device','ear-cuff']},
 };
 
-function expansionSignature(definition:CharacterDefinition){const layers=normalizeClothingLayers(definition.clothingLayers),hair=normalizeHairModular(definition),accessories=normalizeAccessories(definition);return[JSON.stringify(layers),definition.colors.shirt??'',definition.colors.trim??'',hair.back,hair.extra,accessories.headwear,accessories.eyewear,accessories.faceDetail,accessories.earAccessory].join('|');}
+function expansionSignature(definition:CharacterDefinition){const layers=normalizeClothingLayers(definition.clothingLayers),hair=normalizeHairModular(definition),accessories=normalizeAccessories(definition);return[JSON.stringify(layers),definition.colors.shirt??'',definition.colors.trim??'',definition.colors.secondary??'',definition.colors.hardware??'',hair.back,hair.extra,accessories.headwear,accessories.eyewear,accessories.faceDetail,accessories.earAccessory].join('|');}
 
 export function applyGeneratedExpansion(definition:CharacterDefinition,seed:string,style:FactoryStyleId='cool',anchor?:CharacterDefinition,locks:readonly FactoryLock[]=[]){
-  const out=clone(definition),rng=rngFor(`${seed}:expansion:v1`),lockSet=new Set(locks),minimal=STYLE_MINIMAL[style];
+  const out=clone(definition),rng=rngFor(`${seed}:expansion:v2`),lockSet=new Set(locks),minimal=STYLE_MINIMAL[style];
   if(lockSet.has('outfit')&&anchor){out.clothingLayers=clone(normalizeClothingLayers(anchor.clothingLayers));}
   else out.clothingLayers={outer:rng()<minimal.shirtOnly?'shirt-only':'outfit',hood:rng()>=minimal.hoodOff,strap:rng()>=minimal.strapOff,accent:rng()>=minimal.accentOff};
-  if(lockSet.has('colors')&&anchor){out.colors.shirt=anchor.colors.shirt;out.colors.trim=anchor.colors.trim;}
-  else{out.colors.shirt=pick(SHIRT_COLORS,rng);out.colors.trim=pick(TRIM_COLORS,rng);if(rng()<.45)out.colors.accent=pick(ACCENT_COLORS,rng);}
+  if(lockSet.has('colors')&&anchor){out.colors.shirt=anchor.colors.shirt;out.colors.trim=anchor.colors.trim;out.colors.secondary=anchor.colors.secondary;out.colors.hardware=anchor.colors.hardware;}
+  else{out.colors.shirt=pick(SHIRT_COLORS,rng);out.colors.trim=pick(TRIM_COLORS,rng);out.colors.secondary=pick(SECONDARY_COLORS,rng);out.colors.hardware=pick(HARDWARE_COLORS,rng);if(rng()<.45)out.colors.accent=pick(ACCENT_COLORS,rng);}
   if(lockSet.has('hair')&&anchor)setHairModular(out,normalizeHairModular(anchor));
   else{
     const hair=STYLE_HAIR[style],backs=hair.back.filter(id=>HAIR_BACK_OPTIONS.some(item=>item.id===id)) as ReturnType<typeof normalizeHairModular>['back'][],extras=hair.extra.filter(id=>HAIR_EXTRA_OPTIONS.some(item=>item.id===id)) as ReturnType<typeof normalizeHairModular>['extra'][];
