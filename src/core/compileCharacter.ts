@@ -2,14 +2,14 @@ import type { AccentStyleId, CharacterBundle, CharacterDefinition, CharacterExpr
 import { ACCENT_PARTS, BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, HOOD_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS, SHIRT_PARTS, STRAP_PARTS } from '../data/partLibrary';
 import { autoRepairTransform } from '../data/generated/autoRepairOverrides';
 import { ACCENT_PHASE2_AUTO_FIT, BROW_AUTO_FIT, EYE_AUTO_FIT, FACE_PHASE2_AUTO_FIT, HAIR_PHASE2_AUTO_FIT, HAIR_SOURCE_FIT, HOOD_PHASE2_AUTO_FIT, MOUTH_AUTO_FIT, NOSE_AUTO_FIT, OUTFIT_PHASE2_AUTO_FIT, SHIRT_PHASE2_AUTO_FIT, STRAP_PHASE2_AUTO_FIT, canonicalLayerZ, composeAxisAlignedTransforms } from './autoFit';
-import { createBodyProportionMapper } from './bodyProportions';
+import { createBodyProportionMapper, createClothingProportionMapper } from './bodyProportions';
 import { normalizeClothingLayers, shirtColor, trimColor } from './characterExpansion';
 
 type LayerDraft={id:string;zIndex:number;positions:number[];colors:number[];indices:number[]};
 export interface CompileCharacterOptions {repairTransforms?:Readonly<Record<string,PartTransform>>}
 export interface ExportCharacterOptions {activeExpression?:ExpressionId;expressionSet?:CharacterExpressionSet}
 const IDENTITY:PartTransform={x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0};
-const BODY_LAYER_IDS=new Set(['skin-base','shirt','jacket-underlay','jacket','hood','strap','strap-metal','accent']);
+const CLOTHING_BODY_LAYER_IDS=new Set(['shirt','jacket-underlay','jacket','hood','strap','strap-metal','accent']);
 const clamp=(n:number)=>Math.max(0,Math.min(255,n));
 const rgb=(hex:string)=>{const h=hex.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)] as const;};
 const shade=(hex:string,delta=0)=>{const[r,g,b]=rgb(hex);return`#${[r,g,b].map(v=>clamp(v+delta).toString(16).padStart(2,'0')).join('')}`;};
@@ -51,9 +51,10 @@ function emitOutfit(d:Drafts,c:CharacterDefinition,options?:CompileCharacterOpti
 function emitHairUnderCap(d:Drafts,c:CharacterDefinition){const hair=roleColor('hair',c,-8),center:Vec2=[0,1.26],ring:Vec2[]=[[-.60,1.20],[-.52,1.52],[-.26,1.68],[0,1.73],[.26,1.68],[.52,1.52],[.60,1.20]];for(let i=0;i<ring.length-1;i++)d.tri('hair-back',14,[center,ring[i],ring[i+1]],hair);}
 
 function applyCompiledBodyProportions(layers:CompiledPolygonLayer[],c:CharacterDefinition){
-  const map=createBodyProportionMapper(c.bodyProportions);
+  const bodyMap=createBodyProportionMapper(c.bodyProportions),clothingMap=createClothingProportionMapper(c.bodyProportions);
   for(const layer of layers){
-    if(!BODY_LAYER_IDS.has(layer.id))continue;
+    const map=layer.id==='skin-base'?bodyMap:CLOTHING_BODY_LAYER_IDS.has(layer.id)?clothingMap:null;
+    if(!map)continue;
     for(let i=0;i<layer.positions.length;i+=3){
       const [x,y]=map([layer.positions[i],layer.positions[i+1]]);
       layer.positions[i]=x;layer.positions[i+1]=y;
