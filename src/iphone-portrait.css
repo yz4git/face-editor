@@ -93,4 +93,7 @@
   .editor-grid,.app-shell[data-active-category="outfit"] .editor-grid,.app-shell[data-active-category="hair"] .editor-grid,.app-shell[data-active-category="outline"] .editor-grid,.app-shell[data-active-category="eyes"] .editor-grid,.app-shell[data-active-category="eyebrows"] .editor-grid,.app-shell[data-active-category="nose"] .editor-grid,.app-shell[data-active-category="mouth"] .editor-grid,.app-shell[data-active-category="accessory"] .editor-grid{grid-template-rows:48px minmax(250px,39vh) minmax(0,1fr)!important}
   .preview-panel{min-height:250px}.category-rail button{flex-basis:64px;min-width:64px}.accessory-pack-row>div{grid-template-columns:repeat(2,minmax(0,1fr))}
   .factory-grid{grid-auto-rows:148px}
+  /* Must be last: compact category rules must never pin the preview height while Focus is active. */
+  .app-shell[data-editor-focus="true"][data-active-category] .editor-grid{grid-template-rows:48px minmax(0,1fr)!important;overflow:hidden}
+  .app-shell[data-editor-focus="true"][data-active-category] .preview-panel{grid-row:2!important;min-height:0}
 }
