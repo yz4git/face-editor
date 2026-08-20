@@ -74,3 +74,27 @@ test('Preview-First UX v2 expression strip starts compact on iPhone and expands 
   await expect(bar).toHaveClass(/collapsed/);await expect(toggle).toHaveAttribute('aria-expanded','false');await expect(neutral).toBeHidden();
   await toggle.click();await expect(bar).not.toHaveClass(/collapsed/);await expect(toggle).toHaveAttribute('aria-expanded','true');await expect(neutral).toBeVisible();await expect(neutral).toHaveClass(/selected/);
 });
+
+test('Accessory Preview-First UI shows one family at a time and keeps the iPhone preview dominant',async({page})=>{
+  await page.setViewportSize({width:844,height:390});await page.goto('http://127.0.0.1:4173/?renderer=canvas2d');
+  await page.locator('.category-rail button[data-focus="accessory"]').click();
+  const tabs=page.locator('button[data-accessory-family]');await expect(tabs).toHaveCount(4);
+  for(let i=0;i<4;i++){const box=await tabs.nth(i).boundingBox();expect(box).toBeTruthy();expect(box!.height).toBeGreaterThanOrEqual(44);}
+  await expect(page.locator('.accessory-pack-row')).toHaveCount(1);await expect(page.locator('button[data-accessory-kind="headwear"]')).toHaveCount(9);await expect(page.locator('button[data-accessory-kind="eyewear"]')).toHaveCount(0);
+  const previewBox=await page.locator('.preview-panel').boundingBox(),rightBox=await page.locator('.right-panel').boundingBox();expect(previewBox).toBeTruthy();expect(rightBox).toBeTruthy();expect(rightBox!.width).toBeLessThanOrEqual(200);expect(previewBox!.width).toBeGreaterThan(500);
+  await page.locator('button[data-accessory-family="eyewear"]').click();await expect(page.locator('button[data-accessory-kind="headwear"]')).toHaveCount(0);await expect(page.locator('button[data-accessory-kind="eyewear"]')).toHaveCount(9);
+  await page.locator('button[data-accessory-family="faceDetail"]').click();await expect(page.locator('button[data-accessory-kind="faceDetail"]')).toHaveCount(9);
+  await page.locator('button[data-accessory-family="earAccessory"]').click();await expect(page.locator('button[data-accessory-kind="earAccessory"]')).toHaveCount(9);
+});
+
+test('Face Outline Inspect fades hair and head accessories without mutating character data',async({page})=>{
+  await page.setViewportSize({width:844,height:390});await page.goto('http://127.0.0.1:4173/?renderer=canvas2d');
+  await page.locator('.category-rail button[data-focus="accessory"]').click();await page.locator('button[data-accessory-kind="headwear"][data-id="beanie"]').click();
+  const selectedBefore=await page.locator('button[data-accessory-kind="headwear"][data-id="beanie"]').getAttribute('class');
+  await page.locator('.category-rail button[data-focus="outline"]').click();
+  expect(await page.evaluate(()=>(window as Window&{__FACE_EDITOR_OUTLINE_INSPECT__?:boolean}).__FACE_EDITOR_OUTLINE_INSPECT__)).toBe(true);
+  const visibility=await page.evaluate(()=>(window as Window&{__FACE_EDITOR_PREVIEW_VISIBILITY__?:{hidden?:string[];dimmed?:string[]}}).__FACE_EDITOR_PREVIEW_VISIBILITY__);
+  expect(visibility?.dimmed).toEqual(expect.arrayContaining(['hair-back','hair-front','hair-accent','headwear','eyewear','ear-accessory']));expect(visibility?.hidden??[]).not.toContain('headwear');
+  await page.locator('.category-rail button[data-focus="accessory"]').click();expect(await page.evaluate(()=>(window as Window&{__FACE_EDITOR_OUTLINE_INSPECT__?:boolean}).__FACE_EDITOR_OUTLINE_INSPECT__)).toBe(false);
+  await expect(page.locator('button[data-accessory-kind="headwear"][data-id="beanie"]')).toHaveClass(new RegExp(selectedBefore?.includes('selected')?'selected':'$a'));
+});
