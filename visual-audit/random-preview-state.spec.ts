@@ -1,4 +1,4 @@
-import { test,expect } from '@playwright/test';
+import { test,expect,type Page } from '@playwright/test';
 
 type PreviewVisibility={hidden?:string[];dimmed?:string[]};
 type AuditWindow=Window&{
@@ -8,7 +8,7 @@ type AuditWindow=Window&{
   __FACE_EDITOR_PREVIEW_VISIBILITY__?:PreviewVisibility;
 };
 
-const readState=(page:Parameters<typeof test>[0]['page'])=>page.evaluate(()=>{
+const readState=(page:Page)=>page.evaluate(()=>{
   const w=window as AuditWindow;
   return{
     focus:w.__FACE_EDITOR_PREVIEW_FOCUS__,
