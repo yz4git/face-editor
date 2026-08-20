@@ -7,12 +7,13 @@ This file is the durable resume checkpoint for the continuous implementation req
 
 ## Phase order
 
-- [ ] 1/7 Minimal Layer Pack
-  - Add `none`/minimal options for hood, strap, accent, and shirt-only outerwear.
-  - Preserve legacy bundles by defaulting missing values to previous defaults.
-  - Update Randomize and Factory weighting so minimal looks occur naturally.
+- [x] 1/7 Minimal Layer Pack — checkpoint `025a69252b28737274414b3329f3620debecc689`
+  - Added non-destructive `shirt-only`, hood off, strap off and accent off states without changing existing part IDs.
+  - Legacy bundles normalize to the previous fully-layered appearance.
+  - UI controls are available in OUTFIT and survive Save/Load/Export through CharacterDefinition.
+  - Phase gate: Unit + TypeScript + production build passed in Face Editor CI #283.
 
-- [ ] 2/7 Clothing Color System v2
+- [ ] 2/7 Clothing Color System v2 — in progress
   - Expose accent color.
   - Add independent inner-shirt color and secondary/trim color roles with backward-compatible defaults.
   - Keep old bundles valid.
