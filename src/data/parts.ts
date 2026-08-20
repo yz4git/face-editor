@@ -1,6 +1,6 @@
 import type { AccentStyleId, BrowStyleId, CharacterBaseId, CharacterDefinition, EyeStyleId, FaceShapeId, HairStyleId, HoodStyleId, MouthStyleId, NoseStyleId, OutfitStyleId, ShirtStyleId, StrapStyleId } from '../core/types';
 import { DEFAULT_BODY_PROPORTIONS, normalizeBodyProportions } from '../core/bodyProportions';
-import { DEFAULT_CLOTHING_LAYERS, normalizeClothingLayers } from '../core/characterExpansion';
+import { DEFAULT_CLOTHING_LAYERS, DEFAULT_SHIRT_COLOR, DEFAULT_TRIM_COLOR, normalizeClothingLayers } from '../core/characterExpansion';
 import { ACCENT_PARTS, BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, HOOD_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS, SHIRT_PARTS, STRAP_PARTS } from './partLibrary';
 
 export interface Option<T extends string> { id:T; label:string }
@@ -30,7 +30,7 @@ export const DEFAULT_CHARACTER:CharacterDefinition={
   version:1,
   baseStyle:'female',outfitStyle:'hooded',hoodStyle:'folded',shirtStyle:'tee',strapStyle:'simple',accentStyle:'diamond',clothingLayers:structuredClone(DEFAULT_CLOTHING_LAYERS),hairStyle:'ponytail',faceShape:'soft',eyeStyle:'bright',browStyle:'soft',noseStyle:'diamond',mouthStyle:'smile-open',
   bodyProportions:structuredClone(DEFAULT_BODY_PROPORTIONS),
-  colors:{skin:'#ffd0aa',hair:'#39281d',eyes:'#5a351b',brows:'#39281d',jacket:'#0b5cad',accent:'#f1bd42'},
+  colors:{skin:'#ffd0aa',hair:'#39281d',eyes:'#5a351b',brows:'#39281d',jacket:'#0b5cad',accent:'#f1bd42',shirt:DEFAULT_SHIRT_COLOR,trim:DEFAULT_TRIM_COLOR},
   transforms:{
     eyes:{x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0},
     brows:{x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0},
