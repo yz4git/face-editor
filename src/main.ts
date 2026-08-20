@@ -5,6 +5,7 @@ import './body-proportions.css';
 import './motion.css';
 import './cutscene.css';
 import './ux-polish.css';
+import './ux-focus-workspace.css';
 import { applyClothingFactoryBias } from './core/clothingFactoryBias';
 import { EditorApp } from './editor/EditorApp';
 import { FactoryPanel } from './editor/FactoryPanel';
