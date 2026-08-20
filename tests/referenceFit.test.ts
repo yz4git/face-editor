@@ -17,10 +17,10 @@ describe('generated source-sheet polygon geometry',()=>{
     expect(generatedSourceTriangleCount('hair','ponytail')).toBe(106);expect(generatedSourceTriangleCount('eye','bright')).toBe(217);expect(generatedSourceTriangleCount('face','soft')).toBe(116);expect(generatedSourceTriangleCount('brow','soft')).toBe(23);expect(generatedSourceTriangleCount('nose','diamond')).toBe(36);expect(generatedSourceTriangleCount('mouth','smile-open')).toBe(123);expect(generatedSourceTriangleCount('outfit','hooded')).toBe(152);
   });
 
-  it('keeps the modular outfit payload complete and deterministic',()=>{
+  it('keeps the legacy modular payload metadata while exposing upgraded effective shirt rows',()=>{
     expect(GENERATED_OUTFIT_COMPONENT_META.sourceRevision).toBe(1);expect(GENERATED_OUTFIT_COMPONENT_META.triangles).toBe(1818);expect(GENERATED_OUTFIT_COMPONENT_META.compressedBase64Length).toBe(18136);expect(GENERATED_OUTFIT_COMPONENT_KEYS).toHaveLength(26);
-    const decoded=GENERATED_OUTFIT_COMPONENT_KEYS.reduce((sum,key)=>{const[kind,id]=splitComponentKey(key);return sum+generatedOutfitComponentTriangleCount(kind,id);},0);expect(decoded).toBe(1818);
-    expect(generatedOutfitComponentTriangleCount('hood','folded')).toBe(57);expect(generatedOutfitComponentTriangleCount('shirt','long-sleeve')).toBe(148);expect(generatedOutfitComponentTriangleCount('strap','single-pouch')).toBe(66);expect(generatedOutfitComponentTriangleCount('accent','diamond')).toBe(66);
+    const effective=GENERATED_OUTFIT_COMPONENT_KEYS.reduce((sum,key)=>{const[kind,id]=splitComponentKey(key);return sum+generatedOutfitComponentTriangleCount(kind,id);},0);expect(effective).toBe(1575);
+    expect(generatedOutfitComponentTriangleCount('hood','folded')).toBe(57);expect(generatedOutfitComponentTriangleCount('shirt','long-sleeve')).toBe(78);expect(generatedOutfitComponentTriangleCount('strap','single-pouch')).toBe(66);expect(generatedOutfitComponentTriangleCount('accent','diamond')).toBe(66);
   });
 
   it('keeps the image-derived clothing pack complete and finite',()=>{
