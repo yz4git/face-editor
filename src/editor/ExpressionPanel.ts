@@ -12,6 +12,7 @@ const ICONS:Record<ExpressionId,string>={neutral:'•',smile:'⌣',happy:'✦',a
 export class ExpressionPanel{
   private active:ExpressionId='neutral';
   private external:ExpressionId|null=null;
+  private collapsed=window.matchMedia('(max-width:900px)').matches;
   private host:HTMLElement;
   private set=cloneExpressionSet(DEFAULT_EXPRESSION_SET);
 
@@ -28,7 +29,10 @@ export class ExpressionPanel{
   }
 
   private onClick=(event:Event)=>{
-    const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-expression]');
+    const source=event.target as HTMLElement;
+    const toggle=source.closest<HTMLButtonElement>('button[data-expression-toggle]');
+    if(toggle){this.collapsed=!this.collapsed;this.render();return;}
+    const button=source.closest<HTMLButtonElement>('button[data-expression]');
     if(!button)return;
     const id=button.dataset.expression as ExpressionId;
     if(!EXPRESSION_ORDER.includes(id))return;
@@ -47,8 +51,11 @@ export class ExpressionPanel{
   private render(){
     const previewExpression=this.external??this.active,selected=this.set.expressions[previewExpression];
     this.host.classList.toggle('cutscene-driven',this.external!==null);
+    this.host.classList.toggle('collapsed',this.collapsed);
     this.host.innerHTML=`
-      <div class="expression-heading"><strong>EXPRESSION</strong><span>${selected.label}${this.external!==null?' · CUT':''}</span></div>
+      <button type="button" class="expression-heading expression-toggle" data-expression-toggle aria-expanded="${this.collapsed?'false':'true'}" title="${this.collapsed?'Expand expression presets':'Collapse expression presets'}">
+        <strong>EXPRESSION</strong><span>${ICONS[previewExpression]} ${selected.label}${this.external!==null?' · CUT':''}</span><i aria-hidden="true">${this.collapsed?'▸':'▾'}</i>
+      </button>
       <div class="expression-buttons" role="group" aria-label="Expression presets">
         ${EXPRESSION_ORDER.map(id=>{const item=this.set.expressions[id];return`<button type="button" data-expression="${id}" class="${id===previewExpression?'selected':''}" aria-pressed="${id===previewExpression?'true':'false'}" title="${item.description}"><span>${ICONS[id]}</span><small>${item.label}</small></button>`;}).join('')}
       </div>`;
