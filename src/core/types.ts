@@ -20,174 +20,52 @@ export type CutsceneTemplateId = 'intro' | 'reaction' | 'battle';
 export type PartCategory = 'body' | 'outfit' | 'hair' | 'face' | 'eye' | 'brow' | 'nose' | 'mouth';
 export type ColorRole = 'skin' | 'hair' | 'eyes' | 'brows' | 'jacket' | 'accent' | 'shirt' | 'hood' | 'strap' | 'metal' | 'white' | 'mouth' | 'tongue' | 'pupil';
 
-export interface PartTransform {
-  x: number;
-  y: number;
-  scaleX: number;
-  scaleY: number;
-  rotation: number;
-  spacing?: number;
-}
-
-export interface BodyProportions {
-  height: number;
-  build: number;
-  shoulders: number;
-}
-
-export interface ClothingLayerState {
-  outer: 'outfit' | 'shirt-only';
-  hood: boolean;
-  strap: boolean;
-  accent: boolean;
-}
-
-export interface CharacterMotionState {
-  version: 1;
-  pose: PoseId;
-  action: MotionActionId;
-  playing: boolean;
-  autoBlink: boolean;
-}
-
-export interface CutsceneCameraState {
-  zoom: number;
-  panX: number;
-  panY: number;
-}
-
-export interface CutsceneCue {
-  id: string;
-  timeMs: number;
-  label: string;
-  expression?: ExpressionId;
-  pose?: PoseId;
-  action?: MotionActionId;
-  camera?: CutsceneCameraState;
-  dialogue?: string;
-}
-
-export interface CutsceneProject {
-  version: 1;
-  title: string;
-  durationMs: number;
-  cues: CutsceneCue[];
-}
-
-export interface ExpressionTransformDelta {
-  x?: number;
-  y?: number;
-  scaleX?: number;
-  scaleY?: number;
-  rotation?: number;
-  spacing?: number;
-}
-
-export interface ExpressionPresetDefinition {
-  id: ExpressionId;
-  label: string;
-  description: string;
-  eyeStyle?: EyeStyleId;
-  browStyle?: BrowStyleId;
-  mouthStyle?: MouthStyleId;
-  transforms?: Partial<Record<'eyes'|'brows'|'nose'|'mouth',ExpressionTransformDelta>>;
-}
-
-export interface CharacterExpressionSet {
-  version: 1;
-  defaultExpression: ExpressionId;
-  expressions: Record<ExpressionId,ExpressionPresetDefinition>;
-}
-
-export interface PartTriangleDefinition {
-  points: Triangle;
-  colorRole: ColorRole;
-  shade?: number;
-  layer: string;
-  zIndex: number;
-}
-
-export interface PartDefinition<T extends string = string> {
-  id: T;
-  label: string;
-  category: PartCategory;
-  anchor: Vec2;
-  bounds: { minX:number; minY:number; maxX:number; maxY:number };
-  tags: readonly string[];
-  triangles: readonly PartTriangleDefinition[];
-}
+export interface PartTransform {x:number;y:number;scaleX:number;scaleY:number;rotation:number;spacing?:number}
+export interface BodyProportions {height:number;build:number;shoulders:number}
+export interface ClothingLayerState {outer:'outfit'|'shirt-only';hood:boolean;strap:boolean;accent:boolean}
+export interface CharacterMotionState {version:1;pose:PoseId;action:MotionActionId;playing:boolean;autoBlink:boolean}
+export interface CutsceneCameraState {zoom:number;panX:number;panY:number}
+export interface CutsceneCue {id:string;timeMs:number;label:string;expression?:ExpressionId;pose?:PoseId;action?:MotionActionId;camera?:CutsceneCameraState;dialogue?:string}
+export interface CutsceneProject {version:1;title:string;durationMs:number;cues:CutsceneCue[]}
+export interface ExpressionTransformDelta {x?:number;y?:number;scaleX?:number;scaleY?:number;rotation?:number;spacing?:number}
+export interface ExpressionPresetDefinition {id:ExpressionId;label:string;description:string;eyeStyle?:EyeStyleId;browStyle?:BrowStyleId;mouthStyle?:MouthStyleId;transforms?:Partial<Record<'eyes'|'brows'|'nose'|'mouth',ExpressionTransformDelta>>}
+export interface CharacterExpressionSet {version:1;defaultExpression:ExpressionId;expressions:Record<ExpressionId,ExpressionPresetDefinition>}
+export interface PartTriangleDefinition {points:Triangle;colorRole:ColorRole;shade?:number;layer:string;zIndex:number}
+export interface PartDefinition<T extends string=string>{id:T;label:string;category:PartCategory;anchor:Vec2;bounds:{minX:number;minY:number;maxX:number;maxY:number};tags:readonly string[];triangles:readonly PartTriangleDefinition[]}
 
 export interface CharacterDefinition {
-  version: 1;
-  baseStyle: CharacterBaseId;
-  outfitStyle: OutfitStyleId;
-  hoodStyle: HoodStyleId;
-  shirtStyle: ShirtStyleId;
-  strapStyle: StrapStyleId;
-  accentStyle: AccentStyleId;
-  clothingLayers?: ClothingLayerState;
-  hairStyle: HairStyleId;
-  faceShape: FaceShapeId;
-  eyeStyle: EyeStyleId;
-  browStyle: BrowStyleId;
-  noseStyle: NoseStyleId;
-  mouthStyle: MouthStyleId;
-  bodyProportions?: BodyProportions;
-  colors: {
-    skin: string;
-    hair: string;
-    eyes: string;
-    brows: string;
-    jacket: string;
-    accent: string;
-    shirt?: string;
-    trim?: string;
+  version:1;
+  baseStyle:CharacterBaseId;
+  outfitStyle:OutfitStyleId;
+  hoodStyle:HoodStyleId;
+  shirtStyle:ShirtStyleId;
+  strapStyle:StrapStyleId;
+  accentStyle:AccentStyleId;
+  clothingLayers?:ClothingLayerState;
+  hairStyle:HairStyleId;
+  faceShape:FaceShapeId;
+  eyeStyle:EyeStyleId;
+  browStyle:BrowStyleId;
+  noseStyle:NoseStyleId;
+  mouthStyle:MouthStyleId;
+  bodyProportions?:BodyProportions;
+  colors:{
+    skin:string;
+    hair:string;
+    eyes:string;
+    brows:string;
+    jacket:string;
+    accent:string;
+    shirt?:string;
+    trim?:string;
+    secondary?:string;
+    hardware?:string;
   };
-  transforms: {
-    eyes: PartTransform;
-    brows: PartTransform;
-    nose: PartTransform;
-    mouth: PartTransform;
-  };
+  transforms:{eyes:PartTransform;brows:PartTransform;nose:PartTransform;mouth:PartTransform};
 }
 
-export interface CompiledPolygonLayer {
-  id: string;
-  zIndex: number;
-  positions: Float32Array;
-  colors: Float32Array;
-  indices: Uint16Array;
-}
-
-export interface CompiledPolygonCharacter {
-  version: 1;
-  layers: CompiledPolygonLayer[];
-  bounds: { minX:number; minY:number; maxX:number; maxY:number };
-}
-
-export interface SerializablePolygonLayer {
-  id: string;
-  zIndex: number;
-  positions: number[];
-  colors: number[];
-  indices: number[];
-}
-
-export interface CharacterBundle {
-  format: 'face-editor-polygon-character';
-  formatVersion: 1;
-  definition: CharacterDefinition;
-  expressions?: {
-    active: ExpressionId;
-    set: CharacterExpressionSet;
-  };
-  motion?: CharacterMotionState;
-  cutscene?: CutsceneProject;
-  mesh: {
-    version: 1;
-    layers: SerializablePolygonLayer[];
-    bounds: CompiledPolygonCharacter['bounds'];
-  };
-}
-
-export const identityTransform = (): PartTransform => ({ x:0, y:0, scaleX:1, scaleY:1, rotation:0, spacing:0 });
+export interface CompiledPolygonLayer {id:string;zIndex:number;positions:Float32Array;colors:Float32Array;indices:Uint16Array}
+export interface CompiledPolygonCharacter {version:1;layers:CompiledPolygonLayer[];bounds:{minX:number;minY:number;maxX:number;maxY:number}}
+export interface SerializablePolygonLayer {id:string;zIndex:number;positions:number[];colors:number[];indices:number[]}
+export interface CharacterBundle {format:'face-editor-polygon-character';formatVersion:1;definition:CharacterDefinition;expressions?:{active:ExpressionId;set:CharacterExpressionSet};motion?:CharacterMotionState;cutscene?:CutsceneProject;mesh:{version:1;layers:SerializablePolygonLayer[];bounds:CompiledPolygonCharacter['bounds']}}
+export const identityTransform=():PartTransform=>({x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0});

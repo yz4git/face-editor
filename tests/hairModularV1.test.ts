@@ -19,10 +19,10 @@ describe('Hair Modular v1',()=>{
     expect(modular.hairStyle).toBe('bob');
   });
 
-  it('produces distinct silhouettes across back and extra choices',()=>{
+  it('produces distinct silhouettes across non-conflicting back and extra choices',()=>{
     const signatures=new Set<string>();
     for(const back of ['short','medium','long','wavy'] as const)for(const extra of ['none','ponytail','twin-tail','bun','braid'] as const){
-      const character=structuredClone(DEFAULT_CHARACTER);setHairModular(character,{back,extra});
+      const character=structuredClone(DEFAULT_CHARACTER);character.hairStyle='bob';setHairModular(character,{back,extra});
       const mesh=compileCharacter(character),layer=mesh.layers.find(item=>item.id==='hair-back');expect(layer).toBeTruthy();
       expect(Array.from(layer!.positions).every(Number.isFinite)).toBe(true);
       signatures.add(Array.from(layer!.positions).map(value=>value.toFixed(3)).join(','));

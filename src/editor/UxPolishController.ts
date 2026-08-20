@@ -6,9 +6,11 @@ type UxWindow=Window&{
   __FACE_EDITOR_PREVIEW_FOCUS__?:PreviewFocusMode;
   __FACE_EDITOR_EDITOR_FOCUS__?:boolean;
   __FACE_EDITOR_ACTIVE_CATEGORY__?:EditorCategory;
+  __FACE_EDITOR_OUTLINE_INSPECT__?:boolean;
 };
 
 const ACCESSORY_LAYERS=['hood','strap','strap-metal','accent','headwear','eyewear','face-detail','ear-accessory'];
+const OUTLINE_INSPECT_LAYERS=['hair-back','hair-front','hair-accent','headwear','eyewear','ear-accessory'];
 const EDITOR_CATEGORIES:EditorCategory[]=['outfit','hair','outline','eyes','eyebrows','nose','mouth','color','accessory'];
 
 export class UxPolishController{
@@ -50,24 +52,23 @@ export class UxPolishController{
     if(editorFocusButton){this.editorFocus=!this.editorFocus;this.applyEditorFocus();return;}
 
     const previewButton=source.closest<HTMLButtonElement>('button[data-preview-focus]');
-    if(previewButton){
-      const requested=previewButton.dataset.previewFocus as Exclude<PreviewFocusMode,'all'>;
-      this.mode=this.mode===requested?'all':requested;this.applyMode();return;
-    }
+    if(previewButton){const requested=previewButton.dataset.previewFocus as Exclude<PreviewFocusMode,'all'>;this.mode=this.mode===requested?'all':requested;this.applyMode();return;}
 
     const categoryButton=source.closest<HTMLButtonElement>('.category-rail button[data-focus]');
     const requestedCategory=categoryButton?.dataset.focus as EditorCategory|undefined;
-    if(requestedCategory&&EDITOR_CATEGORIES.includes(requestedCategory)){
-      this.applyCategoryContext(requestedCategory);
-    }
+    if(requestedCategory&&EDITOR_CATEGORIES.includes(requestedCategory))this.applyCategoryContext(requestedCategory);
   };
 
   private applyCategoryContext(category:EditorCategory){
     this.activeCategory=category;
     this.appShell.dataset.activeCategory=category;
+    const outlineInspect=category==='outline';
+    this.previewPanel.dataset.outlineInspect=String(outlineInspect);
     (window as UxWindow).__FACE_EDITOR_ACTIVE_CATEGORY__=category;
+    (window as UxWindow).__FACE_EDITOR_OUTLINE_INSPECT__=outlineInspect;
     this.root.querySelector<HTMLElement>('.left-panel')?.scrollTo({top:0,behavior:'auto'});
     this.root.querySelector<HTMLElement>('.right-panel')?.scrollTo({top:0,behavior:'auto'});
+    this.applyMode();
   }
 
   private applyEditorFocus(){
@@ -83,9 +84,11 @@ export class UxPolishController{
     this.dimButton.classList.toggle('selected',this.mode==='dim');this.soloButton.classList.toggle('selected',this.mode==='solo');
     this.dimButton.setAttribute('aria-pressed',String(this.mode==='dim'));this.soloButton.setAttribute('aria-pressed',String(this.mode==='solo'));
     this.previewPanel.dataset.previewFocus=this.mode;(window as UxWindow).__FACE_EDITOR_PREVIEW_FOCUS__=this.mode;
-    let detail:PreviewVisibilityDetail=null;
-    if(this.mode==='dim')detail={dimmed:[...ACCESSORY_LAYERS]};
-    if(this.mode==='solo')detail={hidden:[...ACCESSORY_LAYERS]};
+    const hidden=new Set<string>(),dimmed=new Set<string>();
+    if(this.mode==='dim')for(const layer of ACCESSORY_LAYERS)dimmed.add(layer);
+    if(this.mode==='solo')for(const layer of ACCESSORY_LAYERS)hidden.add(layer);
+    if(this.activeCategory==='outline')for(const layer of OUTLINE_INSPECT_LAYERS)if(!hidden.has(layer))dimmed.add(layer);
+    const detail:PreviewVisibilityDetail=hidden.size||dimmed.size?{hidden:[...hidden],dimmed:[...dimmed]}:null;
     this.previewHost.dispatchEvent(new CustomEvent<PreviewVisibilityDetail>('preview-layer-visibility',{detail}));
   }
 

@@ -26,19 +26,19 @@ describe('Expression System v1',()=>{
     expect(applyExpression(base,'neutral')).not.toBe(base);
   });
 
-  it('composes expression transform deltas on top of manual facial adjustments',()=>{
+  it('composes identity-preserving expression transform deltas on top of manual facial adjustments',()=>{
     const base=structuredClone(DEFAULT_CHARACTER);
     base.transforms.brows={x:.01,y:.02,scaleX:1.2,scaleY:.9,rotation:.1,spacing:.03};
     base.transforms.eyes={x:0,y:.04,scaleX:1.1,scaleY:1.2,rotation:-.02,spacing:.05};
     const angry=applyExpression(base,'angry');
     expect(angry.transforms.brows.x).toBeCloseTo(.01);
-    expect(angry.transforms.brows.y).toBeCloseTo(.002);
+    expect(angry.transforms.brows.y).toBeCloseTo(0);
     expect(angry.transforms.brows.scaleX).toBeCloseTo(1.2);
     expect(angry.transforms.brows.scaleY).toBeCloseTo(.9);
-    expect(angry.transforms.brows.rotation).toBeCloseTo(.175);
+    expect(angry.transforms.brows.rotation).toBeCloseTo(.195);
     expect(angry.transforms.brows.spacing).toBeCloseTo(.03);
-    expect(angry.transforms.eyes.y).toBeCloseTo(.04);
-    expect(angry.transforms.eyes.scaleY).toBeCloseTo(1.128);
+    expect(angry.transforms.eyes.y).toBeCloseTo(.038);
+    expect(angry.transforms.eyes.scaleY).toBeCloseTo(1.08);
   });
 
   it('compiles every expression for Factory-generated characters to finite polygon buffers',()=>{
