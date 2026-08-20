@@ -6,6 +6,14 @@ interface CharacterExpansionBridge{
   applyCharacter(definition:CharacterDefinition):void;
 }
 
+type AccessoryFamily='headwear'|'eyewear'|'faceDetail'|'earAccessory';
+const ACCESSORY_FAMILIES:readonly {id:AccessoryFamily;label:string;longLabel:string}[]=[
+  {id:'headwear',label:'HEAD',longLabel:'HEADWEAR'},
+  {id:'eyewear',label:'EYES',longLabel:'EYEWEAR'},
+  {id:'faceDetail',label:'FACE',longLabel:'FACE DETAIL'},
+  {id:'earAccessory',label:'EARS',longLabel:'EAR ACCESSORY'},
+];
+
 const clone=<T>(value:T):T=>structuredClone(value);
 const swatches=(kind:'shirt'|'trim'|'accent',items:readonly string[],selected:string)=>items.map(color=>`<button type="button" class="expansion-swatch ${color.toLowerCase()===selected.toLowerCase()?'selected':''}" data-clothing-color="${kind}" data-color="${color}" style="--expansion-swatch:${color}" aria-label="${kind} ${color}"></button>`).join('');
 
@@ -15,6 +23,7 @@ export class CharacterExpansionPanel{
   private hairHost:HTMLElement;
   private accessoryHost:HTMLElement;
   private accessoryButton:HTMLButtonElement;
+  private activeAccessoryFamily:AccessoryFamily='headwear';
 
   constructor(private root:HTMLElement,private bridge:CharacterExpansionBridge){
     const outfit=root.querySelector<HTMLElement>('#outfit-section'),hair=root.querySelector<HTMLElement>('#hair-section'),right=root.querySelector<HTMLElement>('.right-panel'),rail=root.querySelector<HTMLElement>('.category-rail');
@@ -43,6 +52,12 @@ export class CharacterExpansionPanel{
 
   private onClick=(event:Event)=>{
     const target=event.target as HTMLElement;
+    const familyButton=target.closest<HTMLButtonElement>('button[data-accessory-family]');
+    if(familyButton&&this.accessoryHost.contains(familyButton)){
+      const family=familyButton.dataset.accessoryFamily as AccessoryFamily;
+      if(ACCESSORY_FAMILIES.some(item=>item.id===family)){this.activeAccessoryFamily=family;this.render();}
+      return;
+    }
     const layerButton=target.closest<HTMLButtonElement>('button[data-minimal-layer]');
     if(layerButton&&this.host.contains(layerButton)){
       const definition=clone(this.bridge.getCharacter()),layers=normalizeClothingLayers(definition.clothingLayers),key=layerButton.dataset.minimalLayer;
@@ -106,16 +121,16 @@ export class CharacterExpansionPanel{
       <label class="expansion-color-row"><strong>ACCENT</strong><div>${swatches('accent',ACCENT_COLORS,definition.colors.accent)}</div></label>`;
     const hairOption=(kind:'back'|'extra',id:string,label:string,selected:boolean)=>`<button type="button" data-hair-modular="${kind}" data-id="${id}" class="${selected?'selected':''}" aria-pressed="${selected}">${label}</button>`;
     this.hairHost.innerHTML=`
-      <div class="expansion-card-heading"><div><strong>HAIR MODULAR v1</strong><small>HAIRSTYLE ABOVE = FRONT / TOP PRESET</small></div></div>
+      <div class="expansion-card-heading"><div><strong>HAIR MODULAR v1.1</strong><small>HAIRSTYLE ABOVE = FRONT / TOP PRESET</small></div></div>
       <div class="hair-modular-row"><strong>BACK</strong><div>${HAIR_BACK_OPTIONS.map(item=>hairOption('back',item.id,item.label,item.id===hair.back)).join('')}</div></div>
       <div class="hair-modular-row"><strong>EXTRA</strong><div>${HAIR_EXTRA_OPTIONS.map(item=>hairOption('extra',item.id,item.label,item.id===hair.extra)).join('')}</div></div>`;
-    const accOption=(kind:string,id:string,label:string,selected:boolean)=>`<button type="button" data-accessory-kind="${kind}" data-id="${id}" class="${selected?'selected':''}" aria-pressed="${selected}">${label}</button>`;
-    this.accessoryHost.innerHTML=`<h2>ACCESSORY PACK v1</h2><div class="accessory-pack-body">
-      <div class="accessory-pack-row"><strong>HEADWEAR</strong><div>${HEADWEAR_OPTIONS.map(item=>accOption('headwear',item.id,item.label,item.id===accessories.headwear)).join('')}</div></div>
-      <div class="accessory-pack-row"><strong>EYEWEAR</strong><div>${EYEWEAR_OPTIONS.map(item=>accOption('eyewear',item.id,item.label,item.id===accessories.eyewear)).join('')}</div></div>
-      <div class="accessory-pack-row"><strong>FACE DETAIL</strong><div>${FACE_DETAIL_OPTIONS.map(item=>accOption('faceDetail',item.id,item.label,item.id===accessories.faceDetail)).join('')}</div></div>
-      <div class="accessory-pack-row"><strong>EAR ACCESSORY</strong><div>${EAR_ACCESSORY_OPTIONS.map(item=>accOption('earAccessory',item.id,item.label,item.id===accessories.earAccessory)).join('')}</div></div>
-    </div>`;
+    const accOption=(kind:AccessoryFamily,id:string,label:string,selected:boolean)=>`<button type="button" data-accessory-kind="${kind}" data-id="${id}" class="${selected?'selected':''}" aria-pressed="${selected}"><span>${label}</span></button>`;
+    const family=ACCESSORY_FAMILIES.find(item=>item.id===this.activeAccessoryFamily)!;
+    const options=this.activeAccessoryFamily==='headwear'?HEADWEAR_OPTIONS:this.activeAccessoryFamily==='eyewear'?EYEWEAR_OPTIONS:this.activeAccessoryFamily==='faceDetail'?FACE_DETAIL_OPTIONS:EAR_ACCESSORY_OPTIONS;
+    const selected=this.activeAccessoryFamily==='headwear'?accessories.headwear:this.activeAccessoryFamily==='eyewear'?accessories.eyewear:this.activeAccessoryFamily==='faceDetail'?accessories.faceDetail:accessories.earAccessory;
+    this.accessoryHost.innerHTML=`<div class="accessory-pack-heading"><div><h2>ACCESSORY PACK v1.1</h2><small>ONE FAMILY AT A TIME · PREVIEW FIRST</small></div></div>
+      <div class="accessory-family-tabs" role="tablist" aria-label="Accessory family">${ACCESSORY_FAMILIES.map(item=>`<button type="button" role="tab" data-accessory-family="${item.id}" class="${item.id===this.activeAccessoryFamily?'selected':''}" aria-selected="${item.id===this.activeAccessoryFamily}">${item.label}</button>`).join('')}</div>
+      <div class="accessory-pack-body"><div class="accessory-pack-row" data-family="${family.id}"><strong>${family.longLabel}</strong><div>${options.map(item=>accOption(this.activeAccessoryFamily,item.id,item.label,item.id===selected)).join('')}</div></div></div>`;
   }
 
   dispose(){this.root.removeEventListener('click',this.onClick);this.host.remove();this.colorHost.remove();this.hairHost.remove();this.accessoryHost.remove();this.accessoryButton.remove();}
