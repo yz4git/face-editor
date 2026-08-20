@@ -12,12 +12,7 @@ export interface AccessoryState{headwear:HeadwearStyleId;eyewear:EyewearStyleId;
 
 export type ExpandedCharacterDefinition=CharacterDefinition&{hairModular?:HairModularState;accessories?:AccessoryState};
 
-export const DEFAULT_CLOTHING_LAYERS: ClothingLayerState = {
-  outer: 'outfit',
-  hood: true,
-  strap: true,
-  accent: true,
-};
+export const DEFAULT_CLOTHING_LAYERS: ClothingLayerState = {outer:'outfit',hood:true,strap:true,accent:true};
 export const DEFAULT_HAIR_MODULAR:HairModularState={back:'auto',extra:'none'};
 export const DEFAULT_ACCESSORIES:AccessoryState={headwear:'none',eyewear:'none',faceDetail:'none',earAccessory:'none'};
 
@@ -49,21 +44,25 @@ export const ACCENT_COLORS=['#f1bd42','#f06b47','#56c4d8','#e8578a','#9f7aea','#
 
 export function normalizeClothingLayers(value: CharacterDefinition['clothingLayers']): ClothingLayerState {
   if (!value) return structuredClone(DEFAULT_CLOTHING_LAYERS);
-  return {
-    outer: value.outer === 'shirt-only' ? 'shirt-only' : 'outfit',
-    hood: value.hood !== false,
-    strap: value.strap !== false,
-    accent: value.accent !== false,
-  };
+  return {outer:value.outer==='shirt-only'?'shirt-only':'outfit',hood:value.hood!==false,strap:value.strap!==false,accent:value.accent!==false};
 }
+
+const TOP_EXTRA_CONFLICTS:Readonly<Record<string,HairExtraStyleId>>={
+  ponytail:'ponytail','side-tail':'ponytail','twin-tail':'twin-tail',bun:'bun',braid:'braid',
+};
+export function hairExtraConflictsWithTop(definition:CharacterDefinition,extra:HairExtraStyleId){return extra!=='none'&&TOP_EXTRA_CONFLICTS[definition.hairStyle]===extra;}
 
 export function normalizeHairModular(definition:CharacterDefinition):HairModularState{
   const value=(definition as ExpandedCharacterDefinition).hairModular;
   const back:HairBackStyleId=value&&HAIR_BACK_OPTIONS.some(item=>item.id===value.back)?value.back:'auto';
-  const extra:HairExtraStyleId=value&&HAIR_EXTRA_OPTIONS.some(item=>item.id===value.extra)?value.extra:'none';
+  let extra:HairExtraStyleId=value&&HAIR_EXTRA_OPTIONS.some(item=>item.id===value.extra)?value.extra:'none';
+  if(hairExtraConflictsWithTop(definition,extra))extra='none';
   return{back,extra};
 }
-export function setHairModular(definition:CharacterDefinition,state:HairModularState){(definition as ExpandedCharacterDefinition).hairModular=structuredClone(state);return definition;}
+export function setHairModular(definition:CharacterDefinition,state:HairModularState){
+  const normalized={...state};if(hairExtraConflictsWithTop(definition,normalized.extra))normalized.extra='none';
+  (definition as ExpandedCharacterDefinition).hairModular=structuredClone(normalized);return definition;
+}
 
 export function normalizeAccessories(definition:CharacterDefinition):AccessoryState{
   const value=(definition as ExpandedCharacterDefinition).accessories;
