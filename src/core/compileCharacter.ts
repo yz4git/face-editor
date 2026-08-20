@@ -3,6 +3,7 @@ import { ACCENT_PARTS, BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS
 import { autoRepairTransform } from '../data/generated/autoRepairOverrides';
 import { ACCENT_PHASE2_AUTO_FIT, BROW_AUTO_FIT, EYE_AUTO_FIT, FACE_PHASE2_AUTO_FIT, HAIR_PHASE2_AUTO_FIT, HAIR_SOURCE_FIT, HOOD_PHASE2_AUTO_FIT, MOUTH_AUTO_FIT, NOSE_AUTO_FIT, OUTFIT_PHASE2_AUTO_FIT, SHIRT_PHASE2_AUTO_FIT, STRAP_PHASE2_AUTO_FIT, canonicalLayerZ, composeAxisAlignedTransforms } from './autoFit';
 import { createBodyProportionMapper } from './bodyProportions';
+import { normalizeClothingLayers } from './characterExpansion';
 
 type LayerDraft={id:string;zIndex:number;positions:number[];colors:number[];indices:number[]};
 export interface CompileCharacterOptions {repairTransforms?:Readonly<Record<string,PartTransform>>}
@@ -36,13 +37,16 @@ function emitOutfitUnderlay(d:Drafts,c:CharacterDefinition,id:OutfitStyleId){
 }
 function emitAccent(d:Drafts,c:CharacterDefinition,id:AccentStyleId,options?:CompileCharacterOptions){const fit=repaired(ACCENT_PHASE2_AUTO_FIT[id],options,'accent',id);for(const item of ACCENT_PARTS[id].triangles){if(id==='triangle'&&Math.max(...item.points.map(point=>point[1]))>TRIANGLE_ACCENT_MAX_Y)continue;d.tri(item.layer,item.zIndex,item.points.map(point=>apply(point,fit)),roleColor(item.colorRole,c,item.shade??0));}}
 function emitOutfit(d:Drafts,c:CharacterDefinition,options?:CompileCharacterOptions){
-  const id=c.outfitStyle??'hooded',outfitFit=repaired(OUTFIT_PHASE2_AUTO_FIT[id],options,'outfit',id);emitOutfitUnderlay(d,c,id);
-  for(const item of OUTFIT_PARTS[id].triangles)if(item.layer==='jacket')d.tri('jacket',2,item.points.map(point=>apply(point,outfitFit)),roleColor('jacket',c,item.shade??0));
+  const id=c.outfitStyle??'hooded',layers=normalizeClothingLayers(c.clothingLayers);
+  if(layers.outer==='outfit'){
+    const outfitFit=repaired(OUTFIT_PHASE2_AUTO_FIT[id],options,'outfit',id);emitOutfitUnderlay(d,c,id);
+    for(const item of OUTFIT_PARTS[id].triangles)if(item.layer==='jacket')d.tri('jacket',2,item.points.map(point=>apply(point,outfitFit)),roleColor('jacket',c,item.shade??0));
+  }
   const shirtId=c.shirtStyle??'tee',hoodId=c.hoodStyle??'folded',strapId=c.strapStyle??'simple';
   emitPart(d,c,SHIRT_PARTS[shirtId],repaired(SHIRT_PHASE2_AUTO_FIT[shirtId],options,'shirt',shirtId));
-  emitPart(d,c,HOOD_PARTS[hoodId],repaired(HOOD_PHASE2_AUTO_FIT[hoodId],options,'hood',hoodId));
-  emitPart(d,c,STRAP_PARTS[strapId],repaired(STRAP_PHASE2_AUTO_FIT[strapId],options,'strap',strapId));
-  emitAccent(d,c,c.accentStyle??'diamond',options);
+  if(layers.hood)emitPart(d,c,HOOD_PARTS[hoodId],repaired(HOOD_PHASE2_AUTO_FIT[hoodId],options,'hood',hoodId));
+  if(layers.strap)emitPart(d,c,STRAP_PARTS[strapId],repaired(STRAP_PHASE2_AUTO_FIT[strapId],options,'strap',strapId));
+  if(layers.accent)emitAccent(d,c,c.accentStyle??'diamond',options);
 }
 function emitHairUnderCap(d:Drafts,c:CharacterDefinition){const hair=roleColor('hair',c,-8),center:Vec2=[0,1.26],ring:Vec2[]=[[-.60,1.20],[-.52,1.52],[-.26,1.68],[0,1.73],[.26,1.68],[.52,1.52],[.60,1.20]];for(let i=0;i<ring.length-1;i++)d.tri('hair-back',14,[center,ring[i],ring[i+1]],hair);}
 
