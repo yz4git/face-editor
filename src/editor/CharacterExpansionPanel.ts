@@ -1,4 +1,4 @@
-import { ACCENT_COLORS, SHIRT_COLORS, TRIM_COLORS, normalizeClothingLayers, shirtColor, trimColor } from '../core/characterExpansion';
+import { ACCENT_COLORS, HAIR_BACK_OPTIONS, HAIR_EXTRA_OPTIONS, SHIRT_COLORS, TRIM_COLORS, normalizeClothingLayers, normalizeHairModular, setHairModular, shirtColor, trimColor } from '../core/characterExpansion';
 import type { CharacterDefinition } from '../core/types';
 
 interface CharacterExpansionBridge{
@@ -12,18 +12,23 @@ const swatches=(kind:'shirt'|'trim'|'accent',items:readonly string[],selected:st
 export class CharacterExpansionPanel{
   private host:HTMLElement;
   private colorHost:HTMLElement;
+  private hairHost:HTMLElement;
 
   constructor(private root:HTMLElement,private bridge:CharacterExpansionBridge){
-    const outfit=root.querySelector<HTMLElement>('#outfit-section');
-    if(!outfit)throw new Error('Expansion outfit host missing');
+    const outfit=root.querySelector<HTMLElement>('#outfit-section'),hair=root.querySelector<HTMLElement>('#hair-section');
+    if(!outfit||!hair)throw new Error('Expansion editor host missing');
     this.host=document.createElement('section');
     this.host.id='minimal-layer-pack';
     this.host.className='expansion-card minimal-layer-pack';
     this.colorHost=document.createElement('section');
     this.colorHost.id='clothing-color-system-v2';
     this.colorHost.className='expansion-card clothing-color-system';
+    this.hairHost=document.createElement('section');
+    this.hairHost.id='hair-modular-v1';
+    this.hairHost.className='expansion-card hair-modular-card';
     outfit.prepend(this.colorHost);
     outfit.prepend(this.host);
+    hair.append(this.hairHost);
     this.root.addEventListener('click',this.onClick);
     this.render();
   }
@@ -53,6 +58,13 @@ export class CharacterExpansionPanel{
       this.render();
       return;
     }
+    const hairButton=target.closest<HTMLButtonElement>('button[data-hair-modular][data-id]');
+    if(hairButton&&this.hairHost.contains(hairButton)){
+      const definition=clone(this.bridge.getCharacter()),state=normalizeHairModular(definition),kind=hairButton.dataset.hairModular,id=hairButton.dataset.id;
+      if(kind==='back'&&HAIR_BACK_OPTIONS.some(item=>item.id===id))state.back=id as typeof state.back;
+      if(kind==='extra'&&HAIR_EXTRA_OPTIONS.some(item=>item.id===id))state.extra=id as typeof state.extra;
+      setHairModular(definition,state);this.bridge.applyCharacter(definition);this.render();return;
+    }
     queueMicrotask(()=>this.render());
   };
 
@@ -60,7 +72,7 @@ export class CharacterExpansionPanel{
 
   private render(){
     if(!this.host.isConnected)return;
-    const definition=this.bridge.getCharacter(),layers=normalizeClothingLayers(definition.clothingLayers);
+    const definition=this.bridge.getCharacter(),layers=normalizeClothingLayers(definition.clothingLayers),hair=normalizeHairModular(definition);
     const toggle=(key:string,label:string,on:boolean,onLabel:string,offLabel:string)=>`<button type="button" data-minimal-layer="${key}" class="${on?'selected minimal-on':'minimal-off'}" aria-pressed="${on}"><strong>${label}</strong><span>${on?onLabel:offLabel}</span></button>`;
     this.host.innerHTML=`
       <div class="expansion-card-heading"><div><strong>MINIMAL LAYER PACK</strong><small>REMOVE LAYERS WITHOUT LOSING THEIR STYLE CHOICE</small></div></div>
@@ -75,7 +87,12 @@ export class CharacterExpansionPanel{
       <label class="expansion-color-row"><strong>INNER</strong><div>${swatches('shirt',SHIRT_COLORS,shirtColor(definition))}</div></label>
       <label class="expansion-color-row"><strong>TRIM</strong><div>${swatches('trim',TRIM_COLORS,trimColor(definition))}</div></label>
       <label class="expansion-color-row"><strong>ACCENT</strong><div>${swatches('accent',ACCENT_COLORS,definition.colors.accent)}</div></label>`;
+    const option=(kind:'back'|'extra',id:string,label:string,selected:boolean)=>`<button type="button" data-hair-modular="${kind}" data-id="${id}" class="${selected?'selected':''}" aria-pressed="${selected}">${label}</button>`;
+    this.hairHost.innerHTML=`
+      <div class="expansion-card-heading"><div><strong>HAIR MODULAR v1</strong><small>HAIRSTYLE ABOVE = FRONT / TOP PRESET</small></div></div>
+      <div class="hair-modular-row"><strong>BACK</strong><div>${HAIR_BACK_OPTIONS.map(item=>option('back',item.id,item.label,item.id===hair.back)).join('')}</div></div>
+      <div class="hair-modular-row"><strong>EXTRA</strong><div>${HAIR_EXTRA_OPTIONS.map(item=>option('extra',item.id,item.label,item.id===hair.extra)).join('')}</div></div>`;
   }
 
-  dispose(){this.root.removeEventListener('click',this.onClick);this.host.remove();this.colorHost.remove();}
+  dispose(){this.root.removeEventListener('click',this.onClick);this.host.remove();this.colorHost.remove();this.hairHost.remove();}
 }
