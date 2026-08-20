@@ -1,5 +1,5 @@
 type PreviewFocusMode='all'|'dim'|'solo';
-type EditorCategory='outfit'|'hair'|'outline'|'eyes'|'eyebrows'|'nose'|'mouth'|'color';
+type EditorCategory='outfit'|'hair'|'outline'|'eyes'|'eyebrows'|'nose'|'mouth'|'color'|'accessory';
 
 type PreviewVisibilityDetail={hidden?:string[];dimmed?:string[]}|null;
 type UxWindow=Window&{
@@ -8,8 +8,8 @@ type UxWindow=Window&{
   __FACE_EDITOR_ACTIVE_CATEGORY__?:EditorCategory;
 };
 
-const ACCESSORY_LAYERS=['hood','strap','strap-metal','accent'];
-const EDITOR_CATEGORIES:EditorCategory[]=['outfit','hair','outline','eyes','eyebrows','nose','mouth','color'];
+const ACCESSORY_LAYERS=['hood','strap','strap-metal','accent','headwear','eyewear','face-detail','ear-accessory'];
+const EDITOR_CATEGORIES:EditorCategory[]=['outfit','hair','outline','eyes','eyebrows','nose','mouth','color','accessory'];
 
 export class UxPolishController{
   private previewHost:HTMLElement;
@@ -33,8 +33,8 @@ export class UxPolishController{
 
     const tools=document.createElement('div');tools.className='preview-focus-tools';tools.setAttribute('role','group');tools.setAttribute('aria-label','Preview focus controls');
     this.editorFocusButton=document.createElement('button');this.editorFocusButton.type='button';this.editorFocusButton.className='view-button preview-focus-button editor-focus-button';this.editorFocusButton.dataset.editorFocus='toggle';this.editorFocusButton.textContent='FOCUS';this.editorFocusButton.title='Collapse both editor side panels and maximize the character preview';
-    this.dimButton=document.createElement('button');this.dimButton.type='button';this.dimButton.className='view-button preview-focus-button';this.dimButton.dataset.previewFocus='dim';this.dimButton.textContent='DIM ACC.';this.dimButton.title='Fade hood, straps and accents without changing character data';
-    this.soloButton=document.createElement('button');this.soloButton.type='button';this.soloButton.className='view-button preview-focus-button';this.soloButton.dataset.previewFocus='solo';this.soloButton.textContent='SOLO';this.soloButton.title='Hide hood, straps and accents to inspect jacket and inner shirt';
+    this.dimButton=document.createElement('button');this.dimButton.type='button';this.dimButton.className='view-button preview-focus-button';this.dimButton.dataset.previewFocus='dim';this.dimButton.textContent='DIM ACC.';this.dimButton.title='Fade hoods, straps, accents and accessories without changing character data';
+    this.soloButton=document.createElement('button');this.soloButton.type='button';this.soloButton.className='view-button preview-focus-button';this.soloButton.dataset.previewFocus='solo';this.soloButton.textContent='SOLO';this.soloButton.title='Hide optional clothing/accessory layers to inspect the core character';
     tools.append(this.editorFocusButton,this.dimButton,this.soloButton);footer.prepend(tools);
 
     this.root.addEventListener('click',this.onClick);

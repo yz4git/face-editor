@@ -5,7 +5,7 @@ test('iPhone landscape keeps primary editor actions touch-sized and save control
   await page.goto('http://127.0.0.1:4173/?renderer=canvas2d');
   const topButtons=page.locator('.top-actions button');await expect(topButtons).toHaveCount(8);
   for(let i=0;i<await topButtons.count();i++){const box=await topButtons.nth(i).boundingBox();expect(box).toBeTruthy();expect(box!.height).toBeGreaterThanOrEqual(44);}
-  const categories=page.locator('.category-rail button');await expect(categories).toHaveCount(8);
+  const categories=page.locator('.category-rail button');await expect(categories).toHaveCount(9);
   for(let i=0;i<await categories.count();i++){const box=await categories.nth(i).boundingBox();expect(box).toBeTruthy();expect(box!.height).toBeGreaterThanOrEqual(44);}
   const viewButtons=page.locator('.preview-footer .view-button');expect(await viewButtons.count()).toBeGreaterThanOrEqual(6);
   for(let i=0;i<await viewButtons.count();i++){const box=await viewButtons.nth(i).boundingBox();expect(box).toBeTruthy();expect(box!.height).toBeGreaterThanOrEqual(44);}
@@ -27,7 +27,7 @@ test('clothing preview focus is non-destructive and works in Canvas2D',async({pa
   const dimmed=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());expect(dimmed).not.toBe(baseline);
   await solo.click();await expect(solo).toHaveClass(/selected/);await expect(dim).not.toHaveClass(/selected/);
   const visibility=await page.evaluate(()=>(window as Window&{__FACE_EDITOR_PREVIEW_VISIBILITY__?:{hidden?:string[];dimmed?:string[]}}).__FACE_EDITOR_PREVIEW_VISIBILITY__);
-  expect(visibility?.hidden).toEqual(expect.arrayContaining(['hood','strap','strap-metal','accent']));
+  expect(visibility?.hidden).toEqual(expect.arrayContaining(['hood','strap','strap-metal','accent','headwear','eyewear','face-detail','ear-accessory']));
   const soloImage=await canvas.evaluate((node:HTMLCanvasElement)=>node.toDataURL());expect(soloImage).not.toBe(dimmed);
   const afterDisplay=await page.locator('.preview-panel').evaluate(el=>getComputedStyle(el,'::after').display);expect(afterDisplay).toBe('none');
   const exportedBefore=await page.locator('#outfit-options .part-card.selected').getAttribute('data-id');
@@ -65,6 +65,7 @@ test('Preview-First UX v2 category context swaps side panels and enlarges garmen
   await expect(page.locator('#outfit-section')).toBeVisible();await expect(page.locator('#hair-section')).toBeHidden();await expect(page.locator('.right-panel')).toBeHidden();
   const garment=page.locator('#outfit-options .part-card').first(),thumb=garment.locator('.part-thumb');const garmentBox=await garment.boundingBox(),thumbBox=await thumb.boundingBox();expect(garmentBox).toBeTruthy();expect(thumbBox).toBeTruthy();expect(garmentBox!.height).toBeGreaterThanOrEqual(80);expect(thumbBox!.height).toBeGreaterThanOrEqual(56);
   await page.locator('.category-rail button[data-focus="eyes"]').click();await expect(shell).toHaveAttribute('data-active-category','eyes');await expect(page.locator('.left-panel')).toBeHidden();await expect(page.locator('.right-panel')).toBeVisible();await expect(page.locator('#eyes-section')).toBeVisible();await expect(page.locator('#mouth-section')).toBeHidden();
+  await page.locator('.category-rail button[data-focus="accessory"]').click();await expect(shell).toHaveAttribute('data-active-category','accessory');await expect(page.locator('.left-panel')).toBeHidden();await expect(page.locator('#accessory-section')).toBeVisible();
 });
 
 test('Preview-First UX v2 expression strip starts compact on iPhone and expands without changing expression',async({page})=>{

@@ -7,6 +7,8 @@ import './cutscene.css';
 import './ux-polish.css';
 import './ux-focus-workspace.css';
 import './preview-first-v2.css';
+import './character-expansion.css';
+import './accessory-pack.css';
 import { applyClothingFactoryBias } from './core/clothingFactoryBias';
 import { EditorApp } from './editor/EditorApp';
 import { FactoryPanel } from './editor/FactoryPanel';
@@ -14,12 +16,17 @@ import { ExpressionPanel } from './editor/ExpressionPanel';
 import { MotionPanel } from './editor/MotionPanel';
 import { CutscenePanel } from './editor/CutscenePanel';
 import { UxPolishController } from './editor/UxPolishController';
+import { CharacterExpansionPanel } from './editor/CharacterExpansionPanel';
 
 applyClothingFactoryBias();
 const root=document.querySelector<HTMLElement>('#app');
 if(!root) throw new Error('App root not found');
 const editor=new EditorApp(root);
 new UxPolishController(root);
+const expansionPanel=new CharacterExpansionPanel(root,{
+  getCharacter:()=>editor.getCharacterDefinition(),
+  applyCharacter:(definition)=>editor.applyCharacterDefinition(definition),
+});
 
 const expressionPanel=new ExpressionPanel(root,{
   getCharacter:()=>editor.getCharacterDefinition(),
@@ -55,6 +62,7 @@ new FactoryPanel(root,{
   applyCharacter:(definition,motion)=>{
     const activeExpression=expressionPanel.getActiveExpression();
     editor.applyCharacterDefinition(definition);
+    expansionPanel.refresh();
     if(activeExpression==='neutral')expressionPanel.applyExpressionState(motion.expression,expressionPanel.getExpressionSet());
     motionPanel.applyFactoryProfile(motion);
   },

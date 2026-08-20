@@ -68,6 +68,12 @@ function validateDefinition(value:unknown):CharacterDefinition{
   const colors=required(value,'colors');
   assertRecord(colors,'definition.colors');
   for(const key of ['skin','hair','eyes','brows','jacket','accent'] as const)if(!isHexColor(required(colors,key)))fail('definition.colors.'+key+' must be a #RRGGBB color');
+  for(const key of ['shirt','trim'] as const)if(colors[key]!==undefined&&!isHexColor(colors[key]))fail('definition.colors.'+key+' must be a #RRGGBB color');
+  if(value.clothingLayers!==undefined){
+    assertRecord(value.clothingLayers,'definition.clothingLayers');
+    if(value.clothingLayers.outer!==undefined&&value.clothingLayers.outer!=='outfit'&&value.clothingLayers.outer!=='shirt-only')fail('definition.clothingLayers.outer is not supported');
+    for(const key of ['hood','strap','accent'] as const)if(value.clothingLayers[key]!==undefined&&typeof value.clothingLayers[key]!=='boolean')fail('definition.clothingLayers.'+key+' must be boolean');
+  }
   const transforms=required(value,'transforms');
   assertRecord(transforms,'definition.transforms');
   for(const key of ['eyes','brows','nose','mouth'] as const)validateTransform(required(transforms,key),'definition.transforms.'+key);

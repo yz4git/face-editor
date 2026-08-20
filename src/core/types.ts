@@ -35,6 +35,13 @@ export interface BodyProportions {
   shoulders: number;
 }
 
+export interface ClothingLayerState {
+  outer: 'outfit' | 'shirt-only';
+  hood: boolean;
+  strap: boolean;
+  accent: boolean;
+}
+
 export interface CharacterMotionState {
   version: 1;
   pose: PoseId;
@@ -118,6 +125,7 @@ export interface CharacterDefinition {
   shirtStyle: ShirtStyleId;
   strapStyle: StrapStyleId;
   accentStyle: AccentStyleId;
+  clothingLayers?: ClothingLayerState;
   hairStyle: HairStyleId;
   faceShape: FaceShapeId;
   eyeStyle: EyeStyleId;
@@ -132,6 +140,8 @@ export interface CharacterDefinition {
     brows: string;
     jacket: string;
     accent: string;
+    shirt?: string;
+    trim?: string;
   };
   transforms: {
     eyes: PartTransform;

@@ -18,20 +18,32 @@ export function normalizeBodyProportions(input?:Partial<BodyProportions>|null):B
   };
 }
 
-export function createBodyProportionMapper(input?:Partial<BodyProportions>|null){
-  const body=normalizeBodyProportions(input);
+function createWidthMapper(body:BodyProportions,buildGain:number,shoulderGain:number){
   return(point:Vec2):Vec2=>{
     const belowNeck=Math.max(0,BODY_NECK_PIVOT_Y-point[1]);
     const torsoInfluence=clamp(belowNeck/.42,0,1);
     const shoulderRise=clamp(belowNeck/.72,0,1);
     const lowerFade=1-.58*clamp((-point[1]-.78)/1.25,0,1);
     const shoulderInfluence=shoulderRise*lowerFade;
-    const widthScale=1+(body.build-1)*torsoInfluence+(body.shoulders-1)*shoulderInfluence;
+    const widthScale=1+(body.build-1)*buildGain*torsoInfluence+(body.shoulders-1)*shoulderGain*shoulderInfluence;
     return[
       point[0]*widthScale,
       BODY_NECK_PIVOT_Y+(point[1]-BODY_NECK_PIVOT_Y)*body.height,
     ];
   };
+}
+
+export function createBodyProportionMapper(input?:Partial<BodyProportions>|null){
+  return createWidthMapper(normalizeBodyProportions(input),1,1);
+}
+
+/**
+ * Clothing follows the same height as the body but deliberately under-reacts to width extremes.
+ * This keeps collars, lapels and shoulder panels readable at BUILD/SHOULDERS limits instead of
+ * simply multiplying garment width until the head looks undersized.
+ */
+export function createClothingProportionMapper(input?:Partial<BodyProportions>|null){
+  return createWidthMapper(normalizeBodyProportions(input),.82,.70);
 }
 
 export function bodyProportionsAreDefault(input?:Partial<BodyProportions>|null){
