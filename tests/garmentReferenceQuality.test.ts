@@ -2,10 +2,12 @@ import { describe,expect,it } from 'vitest';
 import { compileCharacter } from '../src/core/compileCharacter';
 import { DEFAULT_CHARACTER } from '../src/data/parts';
 import { GARMENT_REFERENCE_QUALITY_V1_KEYS,GARMENT_REFERENCE_QUALITY_V1_META,garmentReferenceQualityV1TriangleCount,garmentReferenceQualityV1Triangles } from '../src/data/garmentReferenceQualityV1Geometry';
-import type { OutfitStyleId,ShirtStyleId } from '../src/core/types';
+import type { OutfitStyleId,ShirtStyleId,Vec2 } from '../src/core/types';
 
 const OUTFITS=['blazer','bomber','long-coat','tactical-jacket','cropped-jacket','tech-parka'] as const satisfies readonly OutfitStyleId[];
 const SHIRTS=['tee','long-sleeve','tank','turtleneck','henley','dress-shirt'] as const satisfies readonly ShirtStyleId[];
+const width=(points:readonly Vec2[])=>Math.max(...points.map(point=>point[0]))-Math.min(...points.map(point=>point[0]));
+const partWidth=(id:string)=>width(garmentReferenceQualityV1Triangles('shirt',id).flatMap(triangle=>triangle.points));
 
 describe('Jacket & Inner Quality Pass v1',()=>{
   it('keeps the converted authoring-reference pack deterministic and finite',()=>{
@@ -22,6 +24,15 @@ describe('Jacket & Inner Quality Pass v1',()=>{
       expect(triangles.length,key).toBeGreaterThanOrEqual(70);
       for(const triangle of triangles){expect(triangle.points.flat().every(Number.isFinite),key).toBe(true);expect(Number.isFinite(triangle.shade),key).toBe(true);expect(triangle.role).toBe(kind==='outfit'?'jacket':'shirt');}
     }
+  });
+
+  it('preserves the generated sheet width hierarchy instead of normalizing long sleeves back to tee width',()=>{
+    const tee=partWidth('tee'),longSleeve=partWidth('long-sleeve'),turtleneck=partWidth('turtleneck'),tank=partWidth('tank');
+    expect(longSleeve/tee).toBeCloseTo(440/381,2);
+    expect(turtleneck/tee).toBeCloseTo(442/381,2);
+    expect(longSleeve).toBeGreaterThan(tee*1.12);
+    expect(turtleneck).toBeGreaterThan(tee*1.12);
+    expect(tank).toBeLessThan(tee*.60);
   });
 
   it('compiles every upgraded jacket and inner through the real editor pipeline',()=>{
