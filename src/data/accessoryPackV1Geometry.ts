@@ -1,5 +1,6 @@
 import type { ColorRole,Vec2 } from '../core/types';
 import type { EarAccessoryStyleId,EyewearStyleId,FaceDetailStyleId,HeadwearStyleId } from '../core/characterExpansion';
+import { qualityAccessoryTriangles } from './accessoryQualityV11Geometry';
 
 export interface AccessoryTriangle{layer:string;zIndex:number;colorRole:ColorRole;shade:number;points:readonly[Vec2,Vec2,Vec2]}
 const t=(layer:string,zIndex:number,colorRole:ColorRole,a:Vec2,b:Vec2,c:Vec2,shade=0):AccessoryTriangle=>({layer,zIndex,colorRole,shade,points:[a,b,c]});
@@ -54,7 +55,7 @@ const HEADWEAR:Record<Exclude<HeadwearStyleId,'none'>,AccessoryTriangle[]>={
     ...rect('headwear',17,'metal',-.055,1.455,.055,1.425,-3),...rect('headwear',16.9,'accent',-.47,1.45,-.42,1.41,1),...rect('headwear',16.9,'accent',.42,1.45,.47,1.41,-2),
   ],
   'small-crown':[
-    t('headwear',17,'accent',[-.28,1.55],[-.20,1.85],[-.05,1.62],2),t('headwear',17,'accent',[-.05,1.62],[0,1.92],[.10,1.62],-1),t('headwear',17,'accent', [.10,1.62],[.25,1.84],[.31,1.54],-5),
+    t('headwear',17,'accent',[-.28,1.55],[-.20,1.85],[-.05,1.62],2),t('headwear',17,'accent',[-.05,1.62],[0,1.92],[.10,1.62],-1),t('headwear',17,'accent',[.10,1.62],[.25,1.84],[.31,1.54],-5),
     ...q('headwear',17,'accent',[-.28,1.55],[-.05,1.62],[.31,1.54],[.25,1.43],-3),
   ],
   'sci-fi-visor':[
@@ -72,12 +73,12 @@ const EYEWEAR:Record<Exclude<EyewearStyleId,'none'>,AccessoryTriangle[]>={
     ...rect('eyewear',13.6,'metal',-.52,.73,-.49,.54,-2),...rect('eyewear',13.6,'metal',.49,.73,.52,.54,-5),...rect('eyewear',13.6,'metal',-.52,.56,-.09,.535,-2),...rect('eyewear',13.6,'metal',.09,.56,.52,.535,-5),
   ],
   sunglasses:[
-    ...q('eyewear',13.5,'pupil',[-.53,.76],[-.08,.74],[-.13,.54],[-.48,.55],-2),...q('eyewear',13.5,'pupil', [.08,.74],[.53,.76],[.48,.55],[.13,.54],-6),...rect('eyewear',13.6,'metal',-.10,.70,.10,.66,-2),
+    ...q('eyewear',13.5,'pupil',[-.53,.76],[-.08,.74],[-.13,.54],[-.48,.55],-2),...q('eyewear',13.5,'pupil',[.08,.74],[.53,.76],[.48,.55],[.13,.54],-6),...rect('eyewear',13.6,'metal',-.10,.70,.10,.66,-2),
   ],
   monocle:[...ring('eyewear',13.6,'metal',.30,.64,.23,.17,.035,10,-2),...rect('eyewear',13.5,'metal',.48,.51,.51,.12,-4),...diamond('eyewear',13.6,'accent',.50,.08,.045,.06,-2)],
   'sport-goggles':[
-    ...q('eyewear',13.5,'metal',[-.56,.77],[-.08,.80],[-.12,.50],[-.50,.52],-3),...q('eyewear',13.5,'metal', [.08,.80],[.56,.77],[.50,.52],[.12,.50],-8),
-    ...q('eyewear',13.6,'accent',[-.49,.71],[-.13,.73],[-.17,.56],[-.45,.57],3),...q('eyewear',13.6,'accent', [.13,.73],[.49,.71],[.45,.57],[.17,.56],-1),
+    ...q('eyewear',13.5,'metal',[-.56,.77],[-.08,.80],[-.12,.50],[-.50,.52],-3),...q('eyewear',13.5,'metal',[.08,.80],[.56,.77],[.50,.52],[.12,.50],-8),
+    ...q('eyewear',13.6,'accent',[-.49,.71],[-.13,.73],[-.17,.56],[-.45,.57],3),...q('eyewear',13.6,'accent',[.13,.73],[.49,.71],[.45,.57],[.17,.56],-1),
   ],
   'cyber-visor':[
     ...q('eyewear',13.5,'pupil',[-.57,.76],[-.34,.82],[.55,.76],[.46,.53],-4),t('eyewear',13.5,'pupil',[-.57,.76],[.46,.53],[-.48,.52],-8),
@@ -95,9 +96,7 @@ const FACE_DETAIL:Record<Exclude<FaceDetailStyleId,'none'>,AccessoryTriangle[]>=
   blush:[...q('face-detail',12.7,'tongue',[-.48,.38],[-.23,.42],[-.27,.27],[-.47,.25],10),...q('face-detail',12.7,'tongue',[.23,.42],[.48,.38],[.47,.25],[.27,.27],4)],
   scar:[...q('face-detail',12.9,'mouth',[-.42,.76],[-.37,.79],[-.12,.24],[-.18,.22],-7),...q('face-detail',12.9,'mouth',[-.31,.48],[-.20,.55],[-.18,.51],[-.29,.44],-3)],
   bandage:[...q('face-detail',12.9,'white',[.18,.47],[.47,.53],[.44,.31],[.15,.27],-8),...rect('face-detail',13,'metal',.28,.48,.31,.30,-6)],
-  'face-paint':[
-    t('face-detail',12.8,'accent',[-.50,.64],[-.25,.73],[-.34,.44],2),t('face-detail',12.8,'accent',[-.34,.44],[-.15,.31],[-.39,.28],-4),
-  ],
+  'face-paint':[t('face-detail',12.8,'accent',[-.50,.64],[-.25,.73],[-.34,.44],2),t('face-detail',12.8,'accent',[-.34,.44],[-.15,.31],[-.39,.28],-4)],
   'cheek-mark':[...diamond('face-detail',12.9,'accent',.36,.34,.11,.08,2),t('face-detail',12.9,'accent',[.25,.34],[.12,.40],[.24,.27],-3)],
   'under-eye-line':[...q('face-detail',12.9,'pupil',[-.47,.48],[-.14,.49],[-.18,.45],[-.43,.44],-4),...q('face-detail',12.9,'pupil',[.14,.49],[.47,.48],[.43,.44],[.18,.45],-7)],
 };
@@ -110,9 +109,7 @@ const EAR:Record<Exclude<EarAccessoryStyleId,'none'>,AccessoryTriangle[]>={
   'chain-earring':[...diamond('ear-accessory',14.2,'accent',.59,.56,.035,.035,2),...rect('ear-accessory',14.2,'metal',.585,.52,.61,.20,-4),...diamond('ear-accessory',14.2,'accent',.598,.15,.045,.055,-2)],
   'comms-device':[...q('ear-accessory',14.2,'metal',[.52,.78],[.68,.73],[.67,.39],[.54,.44],-5),...rect('ear-accessory',14.3,'accent',.57,.65,.65,.51,2)],
   'cyber-earpiece':[...q('ear-accessory',14.2,'pupil',[.54,.75],[.69,.66],[.65,.35],[.55,.45],-3),...q('ear-accessory',14.3,'accent',[.59,.64],[.67,.58],[.64,.45],[.58,.49],4)],
-  'star-earring':[
-    t('ear-accessory',14.2,'accent',[.60,.50],[.64,.38],[.76,.38],2),t('ear-accessory',14.2,'accent',[.60,.50],[.76,.38],[.67,.31],-2),t('ear-accessory',14.2,'accent',[.60,.50],[.67,.31],[.60,.22],-5),t('ear-accessory',14.2,'accent',[.60,.50],[.53,.31],[.44,.38],-1),
-  ],
+  'star-earring':[t('ear-accessory',14.2,'accent',[.60,.50],[.64,.38],[.76,.38],2),t('ear-accessory',14.2,'accent',[.60,.50],[.76,.38],[.67,.31],-2),t('ear-accessory',14.2,'accent',[.60,.50],[.67,.31],[.60,.22],-5),t('ear-accessory',14.2,'accent',[.60,.50],[.53,.31],[.44,.38],-1)],
 };
 
 export function accessoryTriangles(kind:'headwear',id:HeadwearStyleId):readonly AccessoryTriangle[];
@@ -121,6 +118,8 @@ export function accessoryTriangles(kind:'faceDetail',id:FaceDetailStyleId):reado
 export function accessoryTriangles(kind:'earAccessory',id:EarAccessoryStyleId):readonly AccessoryTriangle[];
 export function accessoryTriangles(kind:'headwear'|'eyewear'|'faceDetail'|'earAccessory',id:string):readonly AccessoryTriangle[]{
   if(id==='none')return[];
+  const quality=qualityAccessoryTriangles(kind,id);
+  if(quality)return quality;
   if(kind==='headwear')return HEADWEAR[id as Exclude<HeadwearStyleId,'none'>]??[];
   if(kind==='eyewear')return EYEWEAR[id as Exclude<EyewearStyleId,'none'>]??[];
   if(kind==='faceDetail')return FACE_DETAIL[id as Exclude<FaceDetailStyleId,'none'>]??[];
