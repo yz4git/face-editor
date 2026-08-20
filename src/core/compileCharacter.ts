@@ -1,9 +1,10 @@
 import type { AccentStyleId, CharacterBundle, CharacterDefinition, CharacterExpressionSet, ColorRole, CompiledPolygonCharacter, CompiledPolygonLayer, ExpressionId, FaceShapeId, OutfitStyleId, PartDefinition, PartTransform, Vec2 } from './types';
 import { ACCENT_PARTS, BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, HOOD_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS, SHIRT_PARTS, STRAP_PARTS } from '../data/partLibrary';
+import { hairBackTriangles,hairExtraTriangles } from '../data/hairModularGeometry';
 import { autoRepairTransform } from '../data/generated/autoRepairOverrides';
 import { ACCENT_PHASE2_AUTO_FIT, BROW_AUTO_FIT, EYE_AUTO_FIT, FACE_PHASE2_AUTO_FIT, HAIR_PHASE2_AUTO_FIT, HAIR_SOURCE_FIT, HOOD_PHASE2_AUTO_FIT, MOUTH_AUTO_FIT, NOSE_AUTO_FIT, OUTFIT_PHASE2_AUTO_FIT, SHIRT_PHASE2_AUTO_FIT, STRAP_PHASE2_AUTO_FIT, canonicalLayerZ, composeAxisAlignedTransforms } from './autoFit';
 import { createBodyProportionMapper, createClothingProportionMapper } from './bodyProportions';
-import { normalizeClothingLayers, shirtColor, trimColor } from './characterExpansion';
+import { normalizeClothingLayers,normalizeHairModular,shirtColor,trimColor } from './characterExpansion';
 import { refineFaceShapePoint } from './faceShapeQuality';
 
 type LayerDraft={id:string;zIndex:number;positions:number[];colors:number[];indices:number[]};
@@ -53,6 +54,11 @@ function emitFace(d:Drafts,c:CharacterDefinition,id:FaceShapeId,options?:Compile
   const fit=repaired(FACE_PHASE2_AUTO_FIT[id],options,'face',id);
   for(const item of FACE_PARTS[id].triangles)d.tri(item.layer,item.zIndex,item.points.map(point=>refineFaceShapePoint(id,apply(point,fit))),roleColor(item.colorRole,c,item.shade??0));
 }
+function emitModularHair(d:Drafts,c:CharacterDefinition){
+  const modular=normalizeHairModular(c),color=(delta:number)=>roleColor('hair',c,delta);
+  for(const item of hairBackTriangles(modular.back))d.tri('hair-back',14,item.points,color(item.shade));
+  for(const item of hairExtraTriangles(modular.extra))d.tri('hair-back',14,item.points,color(item.shade));
+}
 function emitHairUnderCap(d:Drafts,c:CharacterDefinition){const hair=roleColor('hair',c,-8),center:Vec2=[0,1.26],ring:Vec2[]=[[-.60,1.20],[-.52,1.52],[-.26,1.68],[0,1.73],[.26,1.68],[.52,1.52],[.60,1.20]];for(let i=0;i<ring.length-1;i++)d.tri('hair-back',14,[center,ring[i],ring[i+1]],hair);}
 
 function applyCompiledBodyProportions(layers:CompiledPolygonLayer[],c:CharacterDefinition){
@@ -69,7 +75,7 @@ function applyCompiledBodyProportions(layers:CompiledPolygonLayer[],c:CharacterD
 
 export function compileCharacter(c:CharacterDefinition,options?:CompileCharacterOptions):CompiledPolygonCharacter{
   const d=new Drafts();emitSkinUnderlay(d,c);emitPart(d,c,BODY_PARTS[c.baseStyle??'female']);emitOutfit(d,c,options);
-  emitFace(d,c,c.faceShape,options);emitHairUnderCap(d,c);
+  emitFace(d,c,c.faceShape,options);emitModularHair(d,c);emitHairUnderCap(d,c);
   const hairFit=repaired(composeAxisAlignedTransforms(HAIR_SOURCE_FIT[c.hairStyle],HAIR_PHASE2_AUTO_FIT[c.hairStyle]),options,'hair',c.hairStyle);emitPart(d,c,HAIR_PARTS[c.hairStyle],hairFit);
   const eyeT=c.transforms.eyes,eyeSpacing=.29+(eyeT.spacing??0),gazeLayers=c.eyeStyle==='side-glance'?new Set(['iris','pupil','eye-glint']):undefined,eyeSource=repaired(EYE_AUTO_FIT[c.eyeStyle],options,'eye',c.eyeStyle);for(const side of[-1,1]as const)emitPart(d,c,EYE_PARTS[c.eyeStyle],{...eyeT,x:0,y:0,rotation:eyeT.rotation*side},[eyeSpacing*side,.62],side<0,side<0?gazeLayers:undefined,eyeSource);
   const browT=c.transforms.brows,browSpacing=.31+(browT.spacing??0),browSource=repaired(BROW_AUTO_FIT[c.browStyle],options,'brow',c.browStyle);for(const side of[-1,1]as const)emitPart(d,c,BROW_PARTS[c.browStyle],{...browT,x:0,y:0,rotation:browT.rotation*side},[browSpacing*side,.93],side<0,undefined,browSource);
