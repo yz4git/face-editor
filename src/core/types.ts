@@ -140,6 +140,8 @@ export interface CharacterDefinition {
     brows: string;
     jacket: string;
     accent: string;
+    shirt?: string;
+    trim?: string;
   };
   transforms: {
     eyes: PartTransform;
