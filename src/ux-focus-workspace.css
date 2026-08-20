@@ -1,0 +1,16 @@
+/* Final workspace geometry for UX & iPhone Polish v1. Loaded after ux-polish.css. */
+.motion-studio{bottom:112px!important;max-height:min(38%,220px)!important}.cutscene-studio{bottom:112px!important;max-height:min(44%,300px)!important}
+
+@media(max-width:900px){
+  /* The expression strip remains a first-class editor control while Motion is open. */
+  .expression-bar{bottom:48px!important;min-height:52px;padding:4px!important}.expression-buttons button{height:44px!important;min-height:44px!important}.expression-buttons button small{font-size:6px}
+  .motion-studio{bottom:104px!important;max-height:38%!important}.cutscene-studio{bottom:104px!important;max-height:42%!important}
+  /* Authoring modes temporarily collapse unrelated chrome so the character gains width and height. */
+  .app-shell:has(.motion-studio:not([hidden])) .editor-grid,.app-shell:has(.cutscene-studio:not([hidden])) .editor-grid{grid-template-columns:0 minmax(0,1fr) 0;grid-template-rows:0 minmax(0,1fr)}
+  .app-shell:has(.motion-studio:not([hidden])) .category-rail,.app-shell:has(.motion-studio:not([hidden])) .left-panel,.app-shell:has(.motion-studio:not([hidden])) .right-panel,.app-shell:has(.cutscene-studio:not([hidden])) .category-rail,.app-shell:has(.cutscene-studio:not([hidden])) .left-panel,.app-shell:has(.cutscene-studio:not([hidden])) .right-panel{display:none}
+  .app-shell:has(.motion-studio:not([hidden])) .preview-panel,.app-shell:has(.cutscene-studio:not([hidden])) .preview-panel{grid-column:2;grid-row:2}
+}
+
+@media(max-height:520px) and (orientation:landscape){
+  .motion-studio{bottom:104px!important;max-height:36%!important}.cutscene-studio{bottom:104px!important;max-height:40%!important}
+}
