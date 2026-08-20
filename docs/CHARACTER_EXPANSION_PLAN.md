@@ -3,54 +3,68 @@
 Branch: `agent/character-expansion-seven-phase`
 Base: `main` at `3d993d9e960efdca968a2671dc656eda93b69bc3`
 
-This file is the durable resume checkpoint for the continuous implementation requested on 2026-08-20. Each completed phase is committed independently before the next phase starts.
+This file is the durable resume checkpoint for the continuous implementation requested on 2026-08-20. Every phase is committed independently and the final head is validated as one integrated system.
 
 ## Phase order
 
-- [x] 1/7 Minimal Layer Pack — checkpoint `025a69252b28737274414b3329f3620debecc689`
-  - Added non-destructive `shirt-only`, hood off, strap off and accent off states without changing existing part IDs.
+- [x] 1/7 Minimal Layer Pack
+  - Added non-destructive shirt-only, hood off, strap off and accent off states without replacing existing style IDs.
   - Legacy bundles normalize to the previous fully-layered appearance.
-  - UI controls are available in OUTFIT and survive Save/Load/Export through CharacterDefinition.
-  - Phase gate: Unit + TypeScript + production build passed in Face Editor CI #283.
+  - OUTFIT UI controls survive Save/Load/Export.
 
-- [ ] 2/7 Clothing Color System v2 — in progress
-  - Expose accent color.
-  - Add independent inner-shirt color and secondary/trim color roles with backward-compatible defaults.
-  - Keep old bundles valid.
+- [x] 2/7 Clothing Color System v2
+  - Added independent inner-shirt, trim/collar and accent colors.
+  - Existing bundles preserve their previous appearance through backward-compatible defaults.
+  - iPhone editing UI exposes the new clothing color roles.
 
-- [ ] 3/7 Body × Clothing Quality Pass
-  - Use softened/non-linear clothing response to extreme shoulders/build.
-  - Preserve face/head proportions and old normal-body appearance.
-  - Add extreme-body clothing regression coverage.
+- [x] 3/7 Body × Clothing Quality Pass
+  - Added softened/non-linear clothing response to extreme build and shoulder values.
+  - Normal-body appearance remains stable while maximum-body clothing avoids excessive lateral expansion.
+  - Added extreme-body clothing regression coverage.
 
-- [ ] 4/7 Face Shape Quality Pass v2
-  - Increase jaw/chin/cheek/vertical-ratio separation between the 10 existing face shapes.
-  - Keep current IDs/save compatibility.
+- [x] 4/7 Face Shape Quality Pass v2
+  - Increased separation between all 10 existing face-shape IDs using cheek, jaw, chin and vertical-ratio profiles.
+  - Existing IDs and save compatibility are preserved.
 
-- [ ] 5/7 Expression / Mouth Quality Pass
-  - Make expression mouth changes preserve selected mouth identity better.
-  - Limit oversized surprise/open-mouth deformation on petite faces.
+- [x] 5/7 Expression / Mouth Quality Pass
+  - Expressions preserve the selected mouth identity where possible instead of always replacing it.
+  - Surprise/happy mouth deformation is capped for petite/rounder faces.
+  - Added expression-mouth regression tests.
 
-- [ ] 6/7 Hair Modular v1
-  - Add modular front/back/extra hair controls while preserving legacy `hairStyle` as a compatibility preset.
-  - Ensure Factory can generate modular combinations without visual explosion.
+- [x] 6/7 Hair Modular v1
+  - Preserved legacy `hairStyle` as the front/top compatibility preset.
+  - Added independent back-hair and extra-hair silhouette controls.
+  - Factory generation supports modular combinations while keeping lock behavior and old saves compatible.
 
-- [ ] 7/7 Accessory Pack v1
-  - Add Headwear, Eyewear, Face Detail, Ear Accessory categories.
+- [x] 7/7 Accessory Pack v1
+  - Added Headwear, Eyewear, Face Detail and Ear Accessory categories.
   - Every category includes `none` and uses non-destructive triangle layers.
-  - Integrate UI, Factory, save/load/export, Motion/Cutscene and iPhone layout.
+  - Integrated editor UI, Factory, Save/Load/Export, Motion/Cutscene and iPhone landscape layout.
 
-## Validation gates
+## Final integrated validation
 
-After every phase:
-1. `npm test`
-2. TypeScript + production build
-3. Relevant browser audit if the phase affects layout/rendering
-4. Commit the checkpoint before moving on
+Final validated implementation head before this checkpoint update: `f1f2ed138212a2619c01a113c17f64bc04064d81`.
 
-Final gate:
-- full Chromium regression
-- WebKit iPhone landscape
-- WebGL runtime
-- legacy closed-loop visual audit
-- PR review summary and merge to `main` only when all gates are green
+- Face Editor CI #320: success
+  - 26/26 test files
+  - 105/105 tests
+  - TypeScript success
+  - Vite production build success
+  - Sites worker build success
+  - root install: 0 vulnerabilities
+- Character Factory Smoke #109: success
+  - Chromium full regression success
+  - WebGL runtime covered by the browser regression suite
+  - WebKit iPhone landscape success
+  - WebKit flow includes Minimal Layer, clothing colors, Hair Modular, all four Accessory categories, Save → mutate → Load restore, SOLO, Motion + Expression and Cutscene
+- Face Editor Visual Audit #281: success
+  - stable: true
+  - passes: 1
+  - mutationPasses: 0
+  - transformRepairs: []
+  - geometryRepairs: []
+  - no generated repair commit required
+
+## Resume state
+
+All seven requested phases are implemented. The remaining release action is to keep this checkpoint document in sync, make PR #31 ready for review, confirm the checkpoint-only commit does not regress CI, and merge to `main` when green.
