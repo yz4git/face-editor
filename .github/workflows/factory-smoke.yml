@@ -27,6 +27,8 @@ jobs:
         run: npx playwright test visual-audit/factory.spec.ts visual-audit/expression.spec.ts visual-audit/body-proportions.spec.ts visual-audit/body-extremes.spec.ts visual-audit/clothing-pack.spec.ts visual-audit/garment-reference-quality.spec.ts visual-audit/bundle-persistence.spec.ts visual-audit/motion-studio.spec.ts visual-audit/cutscene-studio.spec.ts visual-audit/ux-iphone-polish.spec.ts visual-audit/webgl-runtime.spec.ts --browser=chromium --reporter=line
       - name: Run WebKit iPhone landscape compatibility audit
         run: npx playwright test visual-audit/webkit-iphone.spec.ts --browser=webkit --reporter=line
+      - name: Run WebKit iPhone portrait compatibility audit
+        run: npx playwright test visual-audit/webkit-iphone-portrait.spec.ts --browser=webkit --reporter=line
       - uses: actions/upload-artifact@v4
         if: always()
         with:
