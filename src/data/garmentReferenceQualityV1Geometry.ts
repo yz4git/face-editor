@@ -20,7 +20,7 @@ export interface GarmentReferenceQualityV1Triangle{
 
 export const GARMENT_REFERENCE_QUALITY_V1_META={
   sourceRevision:1,
-  method:'generated garment reference sheets -> dark garment semantic mask -> contour/seam/corner sampling -> coverage-gated Delaunay -> normalized 14-byte triangle pack',
+  method:'generated garment reference sheets -> dark garment semantic mask -> contour/seam/corner sampling -> coverage-gated Delaunay -> normalized 14-byte triangle pack -> source-width calibration',
   sourceDimensions:[1536,1024] as const,
   grid:[3,2] as const,
   outfitCount:6,
@@ -33,6 +33,7 @@ export const GARMENT_REFERENCE_QUALITY_V1_META={
     jackets:'bced45200fba7751f3115bd187493f20331796d73c8b694e02375da41b9e6b73',
     shirts:'9331b481624a95d9211af636ac5d0f3e7866d959534c4226a56038686e6e48ad',
   },
+  sourceWidthPixels:{tee:381,'long-sleeve':440,turtleneck:442},
   triangleCounts:{
     'outfit:blazer':86,
     'outfit:bomber':100,
@@ -91,8 +92,29 @@ function decodeTriangle(recordIndex:number):GarmentReferenceQualityV1Triangle{
   if(!role)throw new Error(`Unknown garment reference role at triangle ${recordIndex}`);
   return{points:[point(0),point(1),point(2)],shade:view.getInt8(offset+12),role};
 }
+
+const RAW_PARTS={} as Record<GarmentReferenceQualityV1Key,readonly GarmentReferenceQualityV1Triangle[]>;
+for(const[key,[start,count]]of Object.entries(INDEX) as [GarmentReferenceQualityV1Key,readonly[number,number]][])RAW_PARTS[key]=Array.from({length:count},(_,index)=>decodeTriangle(start+index));
+
+/**
+ * The generator framed each 3x2 cell independently. That is useful for tracing detail, but it
+ * compressed the apparent width difference between the tee (381 source pixels) and the two
+ * long-sleeved references (440/442 source pixels). Restore those authored sheet proportions
+ * after decoding so sleeve length/silhouette survive into the editor instead of collapsing back
+ * toward the tee footprint.
+ */
+const SOURCE_WIDTH_CALIBRATION:Partial<Record<GarmentReferenceQualityV1Key,number>>={
+  'shirt:long-sleeve':440/381,
+  'shirt:turtleneck':(442/381)/(1.8642/2),
+};
+function calibrateSourceWidth(key:GarmentReferenceQualityV1Key,triangles:readonly GarmentReferenceQualityV1Triangle[]):readonly GarmentReferenceQualityV1Triangle[]{
+  const scaleX=SOURCE_WIDTH_CALIBRATION[key];if(!scaleX)return triangles;
+  let minX=Infinity,maxX=-Infinity;for(const triangle of triangles)for(const point of triangle.points){minX=Math.min(minX,point[0]);maxX=Math.max(maxX,point[0]);}
+  const centerX=(minX+maxX)/2;
+  return triangles.map(triangle=>({...triangle,points:triangle.points.map(([x,y])=>[centerX+(x-centerX)*scaleX,y] as Vec2) as unknown as readonly [Vec2,Vec2,Vec2]}));
+}
 const PARTS={} as Record<GarmentReferenceQualityV1Key,readonly GarmentReferenceQualityV1Triangle[]>;
-for(const[key,[start,count]]of Object.entries(INDEX) as [GarmentReferenceQualityV1Key,readonly[number,number]][])PARTS[key]=Array.from({length:count},(_,index)=>decodeTriangle(start+index));
+for(const key of Object.keys(INDEX) as GarmentReferenceQualityV1Key[])PARTS[key]=calibrateSourceWidth(key,RAW_PARTS[key]);
 
 export function garmentReferenceQualityV1Triangles(kind:GarmentReferenceQualityV1Kind,id:string):readonly GarmentReferenceQualityV1Triangle[]{
   const key=`${kind}:${id}` as GarmentReferenceQualityV1Key,value=PARTS[key];
