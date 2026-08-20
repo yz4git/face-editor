@@ -1,0 +1,96 @@
+/* iPhone Portrait v1. Loaded last: portrait gets a stacked preview-first workspace without changing desktop/landscape. */
+@media (max-width:600px) and (orientation:portrait){
+  html,body,#app{height:100%;height:100dvh}
+  body{overscroll-behavior:none}
+  .app-shell{height:var(--face-editor-app-height,100dvh);grid-template-rows:auto minmax(0,1fr) auto;gap:4px;padding:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left))}
+
+  /* Header: brand stays visible, primary tools become a 44px horizontal strip. */
+  .topbar{min-height:92px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-content:start;gap:5px;padding:5px 6px}
+  .brand{min-width:0;max-width:100%;font-size:13px;padding:4px 10px 4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand-mark{width:30px;height:30px;flex:0 0 30px}
+  .top-actions{grid-column:1/-1;display:flex;width:100%;gap:4px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding-bottom:1px}
+  .top-actions::-webkit-scrollbar{display:none}
+  .top-actions button{flex:0 0 54px;min-width:54px;height:44px;font-size:15px}
+  .top-actions small{font-size:5.5px}
+
+  /* Editor: category strip -> preview -> one contextual editor panel. */
+  .editor-grid,.app-shell[data-active-category="outfit"] .editor-grid,.app-shell[data-active-category="hair"] .editor-grid,.app-shell[data-active-category="outline"] .editor-grid,.app-shell[data-active-category="eyes"] .editor-grid,.app-shell[data-active-category="eyebrows"] .editor-grid,.app-shell[data-active-category="nose"] .editor-grid,.app-shell[data-active-category="mouth"] .editor-grid,.app-shell[data-active-category="accessory"] .editor-grid{
+    min-height:0;overflow:hidden;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:48px minmax(270px,42vh) minmax(0,1fr)!important;gap:4px
+  }
+  .category-rail{grid-column:1!important;grid-row:1!important;min-height:48px;display:flex!important;flex-direction:row;gap:4px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:0 1px}
+  .category-rail::-webkit-scrollbar{display:none}
+  .category-rail button{flex:0 0 68px;min-width:68px;min-height:44px;font-size:6.5px;line-height:1.05}
+  .category-rail button span{font-size:14px}
+  .preview-panel{grid-column:1!important;grid-row:2!important;min-width:0;min-height:270px;border-radius:12px}
+  .left-panel,.right-panel{grid-column:1!important;grid-row:3!important;min-width:0;min-height:0;max-height:none;overflow:auto!important;-webkit-overflow-scrolling:touch}
+  .left-panel,.right-panel,.feature{padding:6px}
+  .panel h2{font-size:10px;padding:6px;margin-bottom:6px}
+  .part-card{min-height:72px}.part-thumb{height:50px}.feature .part-card{min-height:66px}.feature .part-thumb{height:45px}.part-card small{font-size:7px}
+  .option-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.option-row{grid-template-columns:repeat(4,minmax(48px,1fr));gap:5px}
+  .swatch-grid{grid-template-columns:repeat(6,minmax(42px,1fr));gap:6px}.swatch{min-height:44px;aspect-ratio:1.15}
+
+  /* Category context still decides which editor is present; portrait only changes where it lives. */
+  .app-shell[data-active-category="outfit"] .left-panel,.app-shell[data-active-category="hair"] .left-panel{display:block!important}
+  .app-shell[data-active-category="outfit"] .right-panel,.app-shell[data-active-category="hair"] .right-panel{display:none!important}
+  .app-shell[data-active-category="outline"] .left-panel,.app-shell[data-active-category="eyes"] .left-panel,.app-shell[data-active-category="eyebrows"] .left-panel,.app-shell[data-active-category="nose"] .left-panel,.app-shell[data-active-category="mouth"] .left-panel,.app-shell[data-active-category="accessory"] .left-panel{display:none!important}
+  .app-shell[data-active-category="outline"] .right-panel,.app-shell[data-active-category="eyes"] .right-panel,.app-shell[data-active-category="eyebrows"] .right-panel,.app-shell[data-active-category="nose"] .right-panel,.app-shell[data-active-category="mouth"] .right-panel,.app-shell[data-active-category="accessory"] .right-panel{display:flex!important}
+
+  /* COLOR needs both palettes, stacked below the preview rather than squeezed beside it. */
+  .app-shell[data-active-category="color"] .editor-grid{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:48px minmax(270px,40vh) minmax(126px,.8fr) minmax(126px,.8fr)!important;overflow:auto}
+  .app-shell[data-active-category="color"] .left-panel{display:block!important;grid-column:1!important;grid-row:3!important;overflow:auto!important}
+  .app-shell[data-active-category="color"] .right-panel{display:flex!important;grid-column:1!important;grid-row:4!important;overflow:auto!important}
+
+  /* Preview footer and expression stay finger-sized and scroll instead of shrinking. */
+  .preview-canvas-wrap{bottom:50px}
+  .preview-footer{height:50px;justify-content:flex-start;gap:5px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px 5px}
+  .preview-footer::-webkit-scrollbar{display:none}
+  .view-button,.preview-focus-button,.editor-focus-button{flex:0 0 auto;min-width:68px;height:44px!important;padding:0 8px;font-size:7px}
+  .expression-bar.collapsed{left:auto!important;right:5px!important;bottom:55px!important;min-height:44px!important;max-width:180px!important}
+  .expression-bar:not(.collapsed){left:5px!important;right:5px!important;bottom:55px!important;padding:5px!important}
+  .expression-buttons button{flex:0 0 52px!important;height:44px!important}
+
+  /* Focus mode keeps the category strip, then gives everything else to the character. */
+  .app-shell[data-editor-focus="true"] .editor-grid{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:48px minmax(0,1fr)!important;overflow:hidden}
+  .app-shell[data-editor-focus="true"] .category-rail{display:flex!important;grid-row:1!important}
+  .app-shell[data-editor-focus="true"] .preview-panel{grid-column:1!important;grid-row:2!important}
+  .app-shell[data-editor-focus="true"] .left-panel,.app-shell[data-editor-focus="true"] .right-panel{display:none!important}
+
+  /* Outfit/Accessory cards need enough visual area to be useful in portrait. */
+  .app-shell[data-active-category="outfit"] #outfit-options,.app-shell[data-active-category="outfit"] #shirt-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .app-shell[data-active-category="outfit"] #outfit-options .part-card,.app-shell[data-active-category="outfit"] #shirt-options .part-card{min-height:102px}
+  .app-shell[data-active-category="outfit"] #outfit-options .part-thumb,.app-shell[data-active-category="outfit"] #shirt-options .part-thumb{height:76px}
+  .app-shell[data-active-category="accessory"] .right-panel{display:flex!important}
+  .accessory-feature{width:100%}.accessory-family-tabs{position:sticky;top:0;z-index:3;background:#fffaf4;padding:2px 0 5px}
+  .accessory-family-tabs button{min-height:44px;font-size:6.5px}.accessory-pack-row>div{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.accessory-pack-row button{min-height:58px;font-size:7px}
+
+  /* Save/load remains available in portrait; secondary status copy is removed to recover height. */
+  .bottombar{display:flex!important;min-height:54px;padding:4px 5px}
+  .bottombar>div:first-child{display:none}
+  .save-slots{width:100%;display:flex;flex-wrap:nowrap;gap:4px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+  .save-slots::-webkit-scrollbar{display:none}.save-slots button{flex:0 0 44px;width:44px;height:44px}.save-slots button[data-action]{flex:0 0 auto;min-width:54px;height:44px;padding:0 8px;font-size:7px}.save-slots output{display:none}
+
+  /* Motion/Cutscene become true portrait workspaces: no side editors, large preview, bottom-sheet controls. */
+  .app-shell:has(.motion-studio:not([hidden])) .editor-grid,.app-shell:has(.cutscene-studio:not([hidden])) .editor-grid{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;overflow:hidden}
+  .app-shell:has(.motion-studio:not([hidden])) .category-rail,.app-shell:has(.cutscene-studio:not([hidden])) .category-rail,.app-shell:has(.motion-studio:not([hidden])) .left-panel,.app-shell:has(.motion-studio:not([hidden])) .right-panel,.app-shell:has(.cutscene-studio:not([hidden])) .left-panel,.app-shell:has(.cutscene-studio:not([hidden])) .right-panel{display:none!important}
+  .app-shell:has(.motion-studio:not([hidden])) .preview-panel,.app-shell:has(.cutscene-studio:not([hidden])) .preview-panel{grid-column:1!important;grid-row:1!important;min-height:0}
+  .motion-studio{left:5px;right:5px;bottom:55px;max-height:46%;overflow-y:auto;padding:7px}
+  .motion-row{display:grid;grid-template-columns:42px minmax(0,1fr);gap:5px}.motion-row>label{align-self:center}.motion-button-strip button{flex:0 0 52px;min-width:52px;height:44px}.motion-footer button{min-height:44px}
+  .cutscene-studio{left:5px;right:5px;bottom:5px;max-height:58%;padding:7px}.cutscene-project-row{grid-template-columns:minmax(0,1fr) 92px}.cutscene-select-grid{grid-template-columns:1fr}.cutscene-inspector-grid{grid-template-columns:1fr}.cutscene-header button,.cutscene-project-row input,.cutscene-inspector input,.cutscene-inspector select,.cutscene-template-row button,.cutscene-transport button,.cutscene-inspector-actions button,.cutscene-camera-presets button,.cutscene-camera-grid label>input{min-height:44px;height:44px}
+
+  /* Factory: 2-column scrollable candidate gallery with large touch controls. */
+  .factory-panel{inset:calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left))}
+  .factory-shell{padding:6px;gap:5px;grid-template-rows:auto auto auto minmax(0,1fr) auto}
+  .factory-header h1{font-size:16px}.factory-header p{display:none}.factory-close{width:44px;height:44px}
+  .factory-controls{grid-template-columns:1fr 1fr;gap:5px}.factory-control-group:first-child{grid-column:1/-1}.factory-control-group{padding:5px}.factory-control-group>label{font-size:6px}
+  .factory-style-row{grid-template-columns:repeat(3,1fr)}.factory-lock-row{grid-template-columns:repeat(2,1fr)}
+  .factory-style-row button,.factory-lock-row button,.seed-group button,.seed-group input{min-height:44px;height:44px;font-size:7px}.factory-generate{grid-column:1/-1;width:100%;height:44px;font-size:9px}
+  .factory-status{overflow-x:auto;min-height:22px}.factory-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none;grid-auto-rows:160px;gap:6px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:1px}.factory-card-meta{font-size:5.5px}.factory-card-meta strong{font-size:8px}
+  .factory-footer{min-height:52px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px}.factory-selected span{display:none}.factory-footer-actions{overflow-x:auto}.factory-footer-actions button{height:44px;min-width:58px;padding:0 8px;font-size:7px}
+}
+
+/* Small iPhones (375/390pt wide) keep the same model but reclaim a little preview height. */
+@media (max-width:400px) and (orientation:portrait){
+  .editor-grid,.app-shell[data-active-category="outfit"] .editor-grid,.app-shell[data-active-category="hair"] .editor-grid,.app-shell[data-active-category="outline"] .editor-grid,.app-shell[data-active-category="eyes"] .editor-grid,.app-shell[data-active-category="eyebrows"] .editor-grid,.app-shell[data-active-category="nose"] .editor-grid,.app-shell[data-active-category="mouth"] .editor-grid,.app-shell[data-active-category="accessory"] .editor-grid{grid-template-rows:48px minmax(250px,39vh) minmax(0,1fr)!important}
+  .preview-panel{min-height:250px}.category-rail button{flex-basis:64px;min-width:64px}.accessory-pack-row>div{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .factory-grid{grid-auto-rows:148px}
+}
