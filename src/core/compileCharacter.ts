@@ -1,10 +1,11 @@
 import type { AccentStyleId, CharacterBundle, CharacterDefinition, CharacterExpressionSet, ColorRole, CompiledPolygonCharacter, CompiledPolygonLayer, ExpressionId, FaceShapeId, OutfitStyleId, PartDefinition, PartTransform, Vec2 } from './types';
 import { ACCENT_PARTS, BODY_PARTS, BROW_PARTS, EYE_PARTS, FACE_PARTS, HAIR_PARTS, HOOD_PARTS, MOUTH_PARTS, NOSE_PARTS, OUTFIT_PARTS, SHIRT_PARTS, STRAP_PARTS } from '../data/partLibrary';
+import { accessoryTriangles } from '../data/accessoryPackV1Geometry';
 import { hairBackTriangles,hairExtraTriangles } from '../data/hairModularGeometry';
 import { autoRepairTransform } from '../data/generated/autoRepairOverrides';
 import { ACCENT_PHASE2_AUTO_FIT, BROW_AUTO_FIT, EYE_AUTO_FIT, FACE_PHASE2_AUTO_FIT, HAIR_PHASE2_AUTO_FIT, HAIR_SOURCE_FIT, HOOD_PHASE2_AUTO_FIT, MOUTH_AUTO_FIT, NOSE_AUTO_FIT, OUTFIT_PHASE2_AUTO_FIT, SHIRT_PHASE2_AUTO_FIT, STRAP_PHASE2_AUTO_FIT, canonicalLayerZ, composeAxisAlignedTransforms } from './autoFit';
 import { createBodyProportionMapper, createClothingProportionMapper } from './bodyProportions';
-import { normalizeClothingLayers,normalizeHairModular,shirtColor,trimColor } from './characterExpansion';
+import { normalizeAccessories,normalizeClothingLayers,normalizeHairModular,shirtColor,trimColor } from './characterExpansion';
 import { refineFaceShapePoint } from './faceShapeQuality';
 
 type LayerDraft={id:string;zIndex:number;positions:number[];colors:number[];indices:number[]};
@@ -60,6 +61,13 @@ function emitModularHair(d:Drafts,c:CharacterDefinition){
   for(const item of hairExtraTriangles(modular.extra))d.tri('hair-back',14,item.points,color(item.shade));
 }
 function emitHairUnderCap(d:Drafts,c:CharacterDefinition){const hair=roleColor('hair',c,-8),center:Vec2=[0,1.26],ring:Vec2[]=[[-.60,1.20],[-.52,1.52],[-.26,1.68],[0,1.73],[.26,1.68],[.52,1.52],[.60,1.20]];for(let i=0;i<ring.length-1;i++)d.tri('hair-back',14,[center,ring[i],ring[i+1]],hair);}
+function emitAccessories(d:Drafts,c:CharacterDefinition){
+  const state=normalizeAccessories(c);
+  for(const item of accessoryTriangles('faceDetail',state.faceDetail))d.tri(item.layer,item.zIndex,item.points,roleColor(item.colorRole,c,item.shade));
+  for(const item of accessoryTriangles('eyewear',state.eyewear))d.tri(item.layer,item.zIndex,item.points,roleColor(item.colorRole,c,item.shade));
+  for(const item of accessoryTriangles('earAccessory',state.earAccessory))d.tri(item.layer,item.zIndex,item.points,roleColor(item.colorRole,c,item.shade));
+  for(const item of accessoryTriangles('headwear',state.headwear))d.tri(item.layer,item.zIndex,item.points,roleColor(item.colorRole,c,item.shade));
+}
 
 function applyCompiledBodyProportions(layers:CompiledPolygonLayer[],c:CharacterDefinition){
   const bodyMap=createBodyProportionMapper(c.bodyProportions),clothingMap=createClothingProportionMapper(c.bodyProportions);
@@ -81,6 +89,7 @@ export function compileCharacter(c:CharacterDefinition,options?:CompileCharacter
   const browT=c.transforms.brows,browSpacing=.31+(browT.spacing??0),browSource=repaired(BROW_AUTO_FIT[c.browStyle],options,'brow',c.browStyle);for(const side of[-1,1]as const)emitPart(d,c,BROW_PARTS[c.browStyle],{...browT,x:0,y:0,rotation:browT.rotation*side},[browSpacing*side,.93],side<0,undefined,browSource);
   emitPart(d,c,NOSE_PARTS[c.noseStyle],c.transforms.nose,[0,.41],false,undefined,repaired(NOSE_AUTO_FIT[c.noseStyle],options,'nose',c.noseStyle));
   emitPart(d,c,MOUTH_PARTS[c.mouthStyle],c.transforms.mouth,[0,.21],false,undefined,repaired(MOUTH_AUTO_FIT[c.mouthStyle],options,'mouth',c.mouthStyle));
+  emitAccessories(d,c);
   const layers=d.compile();applyCompiledBodyProportions(layers,c);let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const layer of layers)for(let i=0;i<layer.positions.length;i+=3){const x=layer.positions[i],y=layer.positions[i+1];minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);}return{version:1,layers,bounds:{minX,minY,maxX,maxY}};
 }
 export function exportCharacterBundle(definition:CharacterDefinition,options:ExportCharacterOptions={}):CharacterBundle{const mesh=compileCharacter(definition);const bundle:CharacterBundle={format:'face-editor-polygon-character',formatVersion:1,definition:structuredClone(definition),mesh:{version:1,bounds:mesh.bounds,layers:mesh.layers.map(l=>({id:l.id,zIndex:l.zIndex,positions:Array.from(l.positions),colors:Array.from(l.colors),indices:Array.from(l.indices)}))}};if(options.expressionSet)bundle.expressions={active:options.activeExpression??options.expressionSet.defaultExpression,set:structuredClone(options.expressionSet)};return bundle;}
