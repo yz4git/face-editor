@@ -40,6 +40,7 @@ export class UxPolishController{
     tools.append(this.editorFocusButton,this.dimButton,this.soloButton);footer.prepend(tools);
 
     this.root.addEventListener('click',this.onClick);
+    this.root.addEventListener('change',this.onChange);
     window.addEventListener('resize',this.resizeHandler,{passive:true});
     window.addEventListener('orientationchange',this.resizeHandler,{passive:true});
     window.visualViewport?.addEventListener('resize',this.resizeHandler,{passive:true});
@@ -54,10 +55,29 @@ export class UxPolishController{
     const previewButton=source.closest<HTMLButtonElement>('button[data-preview-focus]');
     if(previewButton){const requested=previewButton.dataset.previewFocus as Exclude<PreviewFocusMode,'all'>;this.mode=this.mode===requested?'all':requested;this.applyMode();return;}
 
+    const replacementButton=source.closest<HTMLButtonElement>('button[data-action="randomize"],button[data-action="load-slot"],button[data-factory-action="use"]');
+    if(replacementButton){this.resetTransientPreview();return;}
+
     const categoryButton=source.closest<HTMLButtonElement>('.category-rail button[data-focus]');
     const requestedCategory=categoryButton?.dataset.focus as EditorCategory|undefined;
     if(requestedCategory&&EDITOR_CATEGORIES.includes(requestedCategory))this.applyCategoryContext(requestedCategory);
   };
+
+  private onChange=(event:Event)=>{
+    const fileInput=(event.target as HTMLElement).closest<HTMLInputElement>('#bundle-import-input');
+    if(fileInput?.files?.length)this.resetTransientPreview();
+  };
+
+  private resetTransientPreview(){
+    this.mode='all';
+    if(this.activeCategory==='outline'){
+      this.root.querySelectorAll('.category-rail button').forEach(button=>button.classList.remove('active'));
+      this.root.querySelector<HTMLButtonElement>('.category-rail button[data-focus="hair"]')?.classList.add('active');
+      this.applyCategoryContext('hair');
+      return;
+    }
+    this.applyMode();
+  }
 
   private applyCategoryContext(category:EditorCategory){
     this.activeCategory=category;
@@ -99,6 +119,6 @@ export class UxPolishController{
   }
 
   dispose(){
-    this.root.removeEventListener('click',this.onClick);window.removeEventListener('resize',this.resizeHandler);window.removeEventListener('orientationchange',this.resizeHandler);window.visualViewport?.removeEventListener('resize',this.resizeHandler);
+    this.root.removeEventListener('click',this.onClick);this.root.removeEventListener('change',this.onChange);window.removeEventListener('resize',this.resizeHandler);window.removeEventListener('orientationchange',this.resizeHandler);window.visualViewport?.removeEventListener('resize',this.resizeHandler);
   }
 }
