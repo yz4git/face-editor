@@ -30,7 +30,7 @@ describe('generated part auto fitting',()=>{
   it('audits all 122 selectable generated and image-derived parts',()=>{
     const audit=auditGeneratedPartLibrary();
     expect(audit.totalParts).toBe(122);
-    expect(audit.totalTriangles).toBe(8694);
+    expect(audit.totalTriangles).toBe(9073);
     expect(audit.invalidBounds).toEqual([]);expect(audit.emptyParts).toEqual([]);expect(audit.nonFiniteTriangles).toEqual([]);
   });
 

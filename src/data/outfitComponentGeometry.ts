@@ -1,6 +1,7 @@
 import type { Vec2 } from '../core/types';
 import { OUTFIT_COMPONENT_GZIP } from './generated/outfitComponentGzip';
 import { autoRepairGeometry } from './generated/autoRepairGeometry';
+import { garmentReferenceQualityV1Triangles } from './garmentReferenceQualityV1Geometry';
 
 export type OutfitComponentKind='hood'|'shirt'|'strap'|'accent';
 export type OutfitComponentRole='hood'|'shirt'|'strap'|'metal'|'accent';
@@ -20,6 +21,7 @@ const INDEX={
   'accent:diamond':[1485,66],'accent:long-strip':[1551,33],'accent:point-strip':[1584,32],'accent:corner':[1616,31],'accent:chevron':[1647,38],'accent:slash':[1685,40],'accent:taper':[1725,51],'accent:triangle':[1776,42],
 } as const;
 export const GENERATED_OUTFIT_COMPONENT_KEYS=Object.freeze(Object.keys(INDEX) as (keyof typeof INDEX)[]);
+const REFERENCE_SHIRT_IDS=['tee','long-sleeve','tank','turtleneck'] as const;
 
 function decodeBase64(value:string):Uint8Array<ArrayBuffer>{const binary=atob(value),out=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)out[i]=binary.charCodeAt(i);return out;}
 async function inflateGzip(value:string):Promise<Uint8Array<ArrayBuffer>>{
@@ -44,9 +46,14 @@ for(const[key,[start,count]]of Object.entries(INDEX)){
   }
   PARTS.set(key,triangles);
 }
+const REFERENCE_SHIRT_PARTS=new Map<string,readonly OutfitComponentTriangle[]>(REFERENCE_SHIRT_IDS.map(id=>[
+  id,
+  garmentReferenceQualityV1Triangles('shirt',id).map(({shade,points})=>({role:'shirt' as const,shade,points})),
+]));
 
 export function generatedOutfitComponentTriangles(kind:OutfitComponentKind,id:string):readonly OutfitComponentTriangle[]{
   const override=autoRepairGeometry(kind,id);if(override){return override.triangles.map(triangle=>{const role=triangle.role as OutfitComponentRole;if(!ROLES.includes(role))throw new Error(`Unknown auto-repair component role ${triangle.role} for ${kind}:${id}`);return{role,shade:triangle.shade,points:triangle.points};});}
+  if(kind==='shirt'){const reference=REFERENCE_SHIRT_PARTS.get(id);if(reference)return reference;}
   const value=PARTS.get(`${kind}:${id}`);if(!value)throw new Error(`Unknown generated outfit component ${kind}:${id}`);return value;
 }
 export function generatedOutfitComponentTriangleCount(kind:OutfitComponentKind,id:string):number{return generatedOutfitComponentTriangles(kind,id).length;}

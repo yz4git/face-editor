@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "name": "Jacket & Inner Quality Pass v1",
+  "sourcePolicy": "generated authoring reference only; runtime stores normalized triangles and shade deltas, never source pixels",
+  "sourceDimensions": [1536, 1024],
+  "grid": [3, 2],
+  "sources": {
+    "jackets": {
+      "sha256": "bced45200fba7751f3115bd187493f20331796d73c8b694e02375da41b9e6b73",
+      "cells": ["blazer", "bomber", "long-coat", "tactical-jacket", "cropped-jacket", "tech-parka"]
+    },
+    "shirts": {
+      "sha256": "9331b481624a95d9211af636ac5d0f3e7866d959534c4226a56038686e6e48ad",
+      "cells": ["tee", "long-sleeve", "tank", "turtleneck", "henley", "dress-shirt"]
+    }
+  },
+  "conversion": {
+    "mask": "dark garment semantic mask with connected-component cleanup",
+    "features": "contour + seam + corner sampling",
+    "triangulation": "Delaunay with garment-mask coverage gate",
+    "coverage": 0.84,
+    "coordinateScale": 10000,
+    "recordBytes": 14,
+    "outfitPointBudget": 76,
+    "shirtPointBudget": 58,
+    "triangleCount": 1078,
+    "compressedBase64Length": 10584
+  }
+}
