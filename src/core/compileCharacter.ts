@@ -5,7 +5,7 @@ import { hairBackTriangles,hairExtraTriangles } from '../data/hairModularGeometr
 import { autoRepairTransform } from '../data/generated/autoRepairOverrides';
 import { ACCENT_PHASE2_AUTO_FIT, BROW_AUTO_FIT, EYE_AUTO_FIT, FACE_PHASE2_AUTO_FIT, HAIR_PHASE2_AUTO_FIT, HAIR_SOURCE_FIT, HOOD_PHASE2_AUTO_FIT, MOUTH_AUTO_FIT, NOSE_AUTO_FIT, OUTFIT_PHASE2_AUTO_FIT, SHIRT_PHASE2_AUTO_FIT, STRAP_PHASE2_AUTO_FIT, canonicalLayerZ, composeAxisAlignedTransforms } from './autoFit';
 import { createBodyProportionMapper, createClothingProportionMapper } from './bodyProportions';
-import { normalizeAccessories,normalizeClothingLayers,normalizeHairModular,shirtColor,trimColor } from './characterExpansion';
+import { hardwareColor,normalizeAccessories,normalizeClothingLayers,normalizeHairModular,secondaryColor,shirtColor,trimColor } from './characterExpansion';
 import { refineFaceShapePoint } from './faceShapeQuality';
 
 type LayerDraft={id:string;zIndex:number;positions:number[];colors:number[];indices:number[]};
@@ -14,11 +14,14 @@ export interface ExportCharacterOptions {activeExpression?:ExpressionId;expressi
 const IDENTITY:PartTransform={x:0,y:0,scaleX:1,scaleY:1,rotation:0,spacing:0};
 const CLOTHING_BODY_LAYER_IDS=new Set(['shirt','jacket-underlay','jacket','hood','strap','strap-metal','accent']);
 const clamp=(n:number)=>Math.max(0,Math.min(255,n));
-const rgb=(hex:string)=>{const h=hex.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)] as const;};
-const shade=(hex:string,delta=0)=>{const[r,g,b]=rgb(hex);return`#${[r,g,b].map(v=>clamp(v+delta).toString(16).padStart(2,'0')).join('')}`;};
+const rgb=(hex:string)=>{const h=hex.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16)] as const;};
+const shade=(hex:string,delta=0)=>{const h=hex.replace('#',''),r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return`#${[r,g,b].map(v=>clamp(v+delta).toString(16).padStart(2,'0')).join('')}`;};
 const baseColors:Record<Exclude<ColorRole,'skin'|'hair'|'eyes'|'brows'|'jacket'|'accent'>,string>={shirt:'#16212b',hood:'#f3eee4',strap:'#6b4529',metal:'#d0ccc4',white:'#ffffff',mouth:'#7b3437',tongue:'#e26d78',pupil:'#12110f'};
-function roleColor(role:ColorRole,c:CharacterDefinition,delta=0):string{const source=role==='skin'?c.colors.skin:role==='hair'?c.colors.hair:role==='eyes'?c.colors.eyes:role==='brows'?c.colors.brows:role==='jacket'?c.colors.jacket:role==='accent'?c.colors.accent:role==='shirt'?shirtColor(c):role==='hood'?trimColor(c):baseColors[role];return shade(source,delta);}
-class Drafts{private map=new Map<string,LayerDraft>();private layer(id:string,zIndex:number){let d=this.map.get(id);if(!d){d={id,zIndex,positions:[],colors:[],indices:[]};this.map.set(id,d);}return d;}tri(id:string,z:number,points:readonly Vec2[],color:string){const d=this.layer(id,canonicalLayerZ(id,z)),base=d.positions.length/3,[r,g,b]=rgb(color);for(const[x,y]of points){d.positions.push(x,y,0);d.colors.push(r/255,g/255,b/255);}d.indices.push(base,base+1,base+2);}compile():CompiledPolygonLayer[]{return[...this.map.values()].sort((a,b)=>a.zIndex-b.zIndex).map(d=>({id:d.id,zIndex:d.zIndex,positions:new Float32Array(d.positions),colors:new Float32Array(d.colors),indices:new Uint16Array(d.indices)}));}}
+function roleColor(role:ColorRole,c:CharacterDefinition,delta=0):string{
+  const source=role==='skin'?c.colors.skin:role==='hair'?c.colors.hair:role==='eyes'?c.colors.eyes:role==='brows'?c.colors.brows:role==='jacket'?c.colors.jacket:role==='accent'?c.colors.accent:role==='shirt'?shirtColor(c):role==='hood'?trimColor(c):role==='strap'?secondaryColor(c):role==='metal'?hardwareColor(c):baseColors[role];
+  return shade(source,delta);
+}
+class Drafts{private map=new Map<string,LayerDraft>();private layer(id:string,zIndex:number){let d=this.map.get(id);if(!d){d={id,zIndex,positions:[],colors:[],indices:[]};this.map.set(id,d);}return d;}tri(id:string,z:number,points:readonly Vec2[],color:string){const d=this.layer(id,canonicalLayerZ(id,z)),base=d.positions.length/3;const h=color.replace('#',''),r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);for(const[x,y]of points){d.positions.push(x,y,0);d.colors.push(r/255,g/255,b/255);}d.indices.push(base,base+1,base+2);}compile():CompiledPolygonLayer[]{return[...this.map.values()].sort((a,b)=>a.zIndex-b.zIndex).map(d=>({id:d.id,zIndex:d.zIndex,positions:new Float32Array(d.positions),colors:new Float32Array(d.colors),indices:new Uint16Array(d.indices)}));}}
 const apply=(p:Vec2,t:PartTransform,offset:Vec2=[0,0],mirrorX=false):Vec2=>{const px=(mirrorX?-p[0]:p[0])*t.scaleX,py=p[1]*t.scaleY,c=Math.cos(t.rotation),s=Math.sin(t.rotation);return[px*c-py*s+t.x+offset[0],px*s+py*c+t.y+offset[1]];};
 function emitPart(d:Drafts,c:CharacterDefinition,def:PartDefinition,t:PartTransform=IDENTITY,offset:Vec2=[0,0],mirrorX=false,preserveDirectionLayers?:ReadonlySet<string>,sourceTransform?:PartTransform){for(const item of def.triangles){const itemMirror=mirrorX&&!preserveDirectionLayers?.has(item.layer);d.tri(item.layer,item.zIndex,item.points.map(p=>apply(sourceTransform?apply(p,sourceTransform):p,t,offset,itemMirror)),roleColor(item.colorRole,c,item.shade??0));}}
 const repair=(options:CompileCharacterOptions|undefined,family:string,id:string)=>{const persisted=autoRepairTransform(family,id),trial=options?.repairTransforms?.[`${family}:${id}`];if(persisted&&trial)return composeAxisAlignedTransforms(persisted,trial);return persisted??trial??IDENTITY;};
@@ -74,10 +77,7 @@ function applyCompiledBodyProportions(layers:CompiledPolygonLayer[],c:CharacterD
   for(const layer of layers){
     const map=layer.id==='skin-base'?bodyMap:CLOTHING_BODY_LAYER_IDS.has(layer.id)?clothingMap:null;
     if(!map)continue;
-    for(let i=0;i<layer.positions.length;i+=3){
-      const [x,y]=map([layer.positions[i],layer.positions[i+1]]);
-      layer.positions[i]=x;layer.positions[i+1]=y;
-    }
+    for(let i=0;i<layer.positions.length;i+=3){const[x,y]=map([layer.positions[i],layer.positions[i+1]]);layer.positions[i]=x;layer.positions[i+1]=y;}
   }
 }
 
