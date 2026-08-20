@@ -9,6 +9,7 @@ import './ux-focus-workspace.css';
 import './preview-first-v2.css';
 import './character-expansion.css';
 import './accessory-pack.css';
+import './iphone-portrait.css';
 import { applyClothingFactoryBias } from './core/clothingFactoryBias';
 import { EditorApp } from './editor/EditorApp';
 import { FactoryPanel } from './editor/FactoryPanel';
