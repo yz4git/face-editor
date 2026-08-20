@@ -7,6 +7,12 @@ export const DEFAULT_CLOTHING_LAYERS: ClothingLayerState = {
   accent: true,
 };
 
+export const DEFAULT_SHIRT_COLOR='#16212b';
+export const DEFAULT_TRIM_COLOR='#f3eee4';
+export const SHIRT_COLORS=['#16212b','#f4eee5','#dfe8ef','#424c57','#6e3e48','#29485a','#36513f','#7b674c'];
+export const TRIM_COLORS=['#f3eee4','#d4d8dd','#9aa5af','#433d39','#163f5c','#6d3d4f','#38564a','#b98d3f'];
+export const ACCENT_COLORS=['#f1bd42','#f06b47','#56c4d8','#e8578a','#9f7aea','#70c46b','#edf4ff','#ffcf5a'];
+
 export function normalizeClothingLayers(value: CharacterDefinition['clothingLayers']): ClothingLayerState {
   if (!value) return structuredClone(DEFAULT_CLOTHING_LAYERS);
   return {
@@ -16,3 +22,6 @@ export function normalizeClothingLayers(value: CharacterDefinition['clothingLaye
     accent: value.accent !== false,
   };
 }
+
+export function shirtColor(definition:CharacterDefinition){return definition.colors.shirt??DEFAULT_SHIRT_COLOR;}
+export function trimColor(definition:CharacterDefinition){return definition.colors.trim??DEFAULT_TRIM_COLOR;}
