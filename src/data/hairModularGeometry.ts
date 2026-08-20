@@ -21,7 +21,11 @@ const ribbon=(points:readonly Vec2[],widths:readonly number[],shade=0)=>{
   }
   return out;
 };
-const mirror=(items:readonly HairModularTriangle[]):HairModularTriangle[]=>items.map(item=>({shade:item.shade-5,points:item.points.map(([x,y])=>[-x,y]) as [Vec2,Vec2,Vec2]}));
+const mirror=(items:readonly HairModularTriangle[]):HairModularTriangle[]=>items.map(item=>{
+  const [a,b,c]=item.points;
+  const mirrored:[Vec2,Vec2,Vec2]=[[-a[0],a[1]],[-b[0],b[1]],[-c[0],c[1]]];
+  return{shade:item.shade-5,points:mirrored};
+});
 
 const shortSide=ribbon([[.48,1.39],[.61,1.25],[.69,1.05],[.65,.83],[.56,.62],[.43,.47]], [.12,.14,.15,.14,.12,.08],-3);
 const mediumSide=ribbon([[.48,1.40],[.64,1.25],[.72,1.00],[.72,.72],[.68,.43],[.62,.13],[.53,-.08],[.43,-.20]], [.12,.15,.17,.18,.18,.16,.12,.07],-3);
