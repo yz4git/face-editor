@@ -16,15 +16,17 @@ jobs:
       - run: npm install
       - run: npm run build
       - run: npm install --no-save @playwright/test@1.55.0
-      - run: npx playwright install chromium
+      - run: npx playwright install --with-deps chromium webkit
       - name: Start preview
         run: |
           npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/face-editor-factory-preview.log 2>&1 &
           for i in {1..30}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
           cat /tmp/face-editor-factory-preview.log
           exit 1
-      - name: Run Factory, Expression, Body Size, Clothing Quality, Motion Studio, Cutscene Studio and persistence browser audits
-        run: npx playwright test visual-audit/factory.spec.ts visual-audit/expression.spec.ts visual-audit/body-proportions.spec.ts visual-audit/body-extremes.spec.ts visual-audit/clothing-pack.spec.ts visual-audit/garment-reference-quality.spec.ts visual-audit/bundle-persistence.spec.ts visual-audit/motion-studio.spec.ts visual-audit/cutscene-studio.spec.ts --reporter=line
+      - name: Run Factory, Expression, Body Size, Clothing Quality, Motion Studio, Cutscene Studio, UX and persistence browser audits
+        run: npx playwright test visual-audit/factory.spec.ts visual-audit/expression.spec.ts visual-audit/body-proportions.spec.ts visual-audit/body-extremes.spec.ts visual-audit/clothing-pack.spec.ts visual-audit/garment-reference-quality.spec.ts visual-audit/bundle-persistence.spec.ts visual-audit/motion-studio.spec.ts visual-audit/cutscene-studio.spec.ts visual-audit/ux-iphone-polish.spec.ts visual-audit/webgl-runtime.spec.ts --browser=chromium --reporter=line
+      - name: Run WebKit iPhone landscape compatibility audit
+        run: npx playwright test visual-audit/webkit-iphone.spec.ts --browser=webkit --reporter=line
       - uses: actions/upload-artifact@v4
         if: always()
         with:
