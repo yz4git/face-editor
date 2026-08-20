@@ -9,6 +9,8 @@ test('iPhone landscape keeps primary editor actions touch-sized and save control
   for(let i=0;i<await categories.count();i++){const box=await categories.nth(i).boundingBox();expect(box).toBeTruthy();expect(box!.height).toBeGreaterThanOrEqual(44);}
   const viewButtons=page.locator('.preview-footer .view-button');expect(await viewButtons.count()).toBeGreaterThanOrEqual(5);
   for(let i=0;i<await viewButtons.count();i++){const box=await viewButtons.nth(i).boundingBox();expect(box).toBeTruthy();expect(box!.height).toBeGreaterThanOrEqual(44);}
+  const expressionButtons=page.locator('.expression-buttons button');await expect(expressionButtons).toHaveCount(8);
+  for(let i=0;i<await expressionButtons.count();i++){const box=await expressionButtons.nth(i).boundingBox();expect(box).toBeTruthy();expect(box!.height).toBeGreaterThanOrEqual(44);}
   const save=page.locator('button[data-action="save-slot"]'),load=page.locator('button[data-action="load-slot"]');
   await expect(save).toBeVisible();await expect(load).toBeVisible();
   for(const control of [save,load]){const box=await control.boundingBox();expect(box).toBeTruthy();expect(box!.height).toBeGreaterThanOrEqual(44);}
@@ -31,11 +33,15 @@ test('clothing preview focus is non-destructive and works in Canvas2D',async({pa
   await expect(page.locator('#outfit-options .part-card.selected')).toHaveAttribute('data-id',exportedBefore??'');
 });
 
-test('Motion and Cutscene are preview-first bottom sheets on iPhone landscape',async({page})=>{
+test('Motion and Cutscene use focused preview-first workspaces on iPhone landscape',async({page})=>{
   await page.setViewportSize({width:844,height:390});await page.goto('http://127.0.0.1:4173/?renderer=canvas2d');
-  const preview=page.locator('.preview-panel'),previewBox=await preview.boundingBox();expect(previewBox).toBeTruthy();
-  await page.locator('button[data-motion-open]').click();const motion=page.locator('.motion-studio');await expect(motion).toBeVisible();const motionBox=await motion.boundingBox();expect(motionBox).toBeTruthy();expect(motionBox!.y-previewBox!.y).toBeGreaterThan(previewBox!.height*.38);expect(motionBox!.height).toBeLessThan(previewBox!.height*.58);
+  await page.locator('.top-actions button[data-motion-open]').click();const motion=page.locator('.motion-studio');await expect(motion).toBeVisible();
+  await expect(page.locator('.left-panel')).toBeHidden();await expect(page.locator('.right-panel')).toBeHidden();await expect(page.locator('.category-rail')).toBeHidden();
+  let previewBox=await page.locator('.preview-panel').boundingBox(),motionBox=await motion.boundingBox();expect(previewBox).toBeTruthy();expect(motionBox).toBeTruthy();expect(motionBox!.height).toBeLessThan(previewBox!.height*.46);expect(motionBox!.y-previewBox!.y).toBeGreaterThan(previewBox!.height*.18);
+  await page.locator('.expression-bar [data-expression="angry"]').click();await expect(page.locator('.expression-bar [data-expression="angry"]')).toHaveClass(/selected/);
   await page.screenshot({path:'test-results/motion-preview-first-iphone.png',fullPage:true});await motion.locator('button[data-motion-close]').click();
-  await page.locator('button[data-cutscene-open]').click();const cutscene=page.locator('.cutscene-studio');await expect(cutscene).toBeVisible();const cutsceneBox=await cutscene.boundingBox();expect(cutsceneBox).toBeTruthy();expect(cutsceneBox!.y-previewBox!.y).toBeGreaterThan(previewBox!.height*.34);expect(cutsceneBox!.height).toBeLessThan(previewBox!.height*.62);
+  await expect(page.locator('.left-panel')).toBeVisible();
+  await page.locator('.top-actions button[data-cutscene-open]').click();const cutscene=page.locator('.cutscene-studio');await expect(cutscene).toBeVisible();
+  await expect(page.locator('.left-panel')).toBeHidden();await expect(page.locator('.right-panel')).toBeHidden();previewBox=await page.locator('.preview-panel').boundingBox();const cutsceneBox=await cutscene.boundingBox();expect(previewBox).toBeTruthy();expect(cutsceneBox).toBeTruthy();expect(cutsceneBox!.height).toBeLessThan(previewBox!.height*.48);expect(cutsceneBox!.y-previewBox!.y).toBeGreaterThan(previewBox!.height*.14);
   await page.screenshot({path:'test-results/cutscene-preview-first-iphone.png',fullPage:true});
 });
